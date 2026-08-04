@@ -1,37 +1,28 @@
 /**
- * RECOVERY TRACKER - Google Apps Script Backend (v1.1.4 - Safe Spreadsheet Resolver & JSONP)
+ * RECOVERY TRACKER - Google Apps Script Backend (v1.1.5 - Minimal OAuth Permissions & Pure JSONP)
  * 
  * Instructions:
- * 1. Open Google Sheets (or Apps Script).
- * 2. Replace all existing code in Code.gs with this exact file.
- * 3. Click Save (disk icon).
- * 4. Click Deploy > New deployment.
- * 5. Set 'Execute as': Me
- * 6. Set 'Who has access': Anyone  <-- CRITICAL!
- * 7. Click Deploy, copy the resulting Web App URL, and paste into Recovery Tracker Settings.
+ * 1. Open your Google Sheet.
+ * 2. Go to Extensions > Apps Script.
+ * 3. Delete all code in Code.gs and paste this exact file.
+ * 4. Click Save (disk icon).
+ * 5. Click Deploy > New deployment.
+ * 6. Set 'Execute as': Me
+ * 7. Set 'Who has access': Anyone  <-- CRITICAL!
+ * 8. Click Deploy, click "Authorize access" (Advanced > Go to script > Allow), and copy the Web App URL!
+ * 9. Paste the Web App URL into Recovery Tracker Settings.
  */
 
-// Safe Spreadsheet Resolver (Works for both bound sheets and standalone scripts)
+// Active Sheet Binding
 function getSpreadsheet() {
-  let ss = null;
-  try {
-    ss = SpreadsheetApp.getActiveSpreadsheet();
-  } catch (e) {}
-
-  if (!ss) {
-    const files = DriveApp.getFilesByName("Recovery Tracker DB");
-    if (files.hasNext()) {
-      ss = SpreadsheetApp.open(files.next());
-    } else {
-      ss = SpreadsheetApp.create("Recovery Tracker DB");
-    }
-  }
-  return ss;
+  return SpreadsheetApp.getActiveSpreadsheet();
 }
 
 // Ensure sheet tabs exist with correct headers
 function setupSheets() {
   const ss = getSpreadsheet();
+  if (!ss) return;
+
   let medSheet = ss.getSheetByName('Medications');
   if (!medSheet) {
     medSheet = ss.insertSheet('Medications');
@@ -64,6 +55,10 @@ function doGet(e) {
 
     // Default Action: Fetch all data
     const ss = getSpreadsheet();
+    if (!ss) {
+      return respond({ status: 'error', message: 'Spreadsheet not bound. Please run script from Extensions > Apps Script inside Google Sheets.' }, callback);
+    }
+
     const medSheet = ss.getSheetByName('Medications');
     const logSheet = ss.getSheetByName('DoseLogs');
 
@@ -125,6 +120,8 @@ function doPost(e) {
 // Helper to save all data to sheets
 function saveAllData(medications, logs) {
   const ss = getSpreadsheet();
+  if (!ss) return;
+
   const medSheet = ss.getSheetByName('Medications');
   medSheet.clearContents();
   medSheet.appendRow(['id', 'name', 'type', 'quantity', 'unit', 'minIntervalHours', 'scheduledSlots', 'notes', 'updatedAt']);
@@ -166,6 +163,7 @@ function saveAllData(medications, logs) {
 
 // Helper to convert sheet rows into JSON objects
 function getSheetObjects(sheet) {
+  if (!sheet) return [];
   const rows = sheet.getDataRange().getValues();
   if (rows.length <= 1) return [];
   const headers = rows[0];

@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 1.1.4
+ * Version 1.1.6
  */
 
 // Global Application State
@@ -9,7 +9,7 @@ const STATE = {
   logs: [],
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v1.1.4',
+  version: 'v1.1.6',
   theme: 'light',
   timerInterval: null
 };
@@ -197,7 +197,7 @@ function fetchFromGoogleSheets() {
   const timeoutId = setTimeout(() => {
     cleanup();
     updateSyncStatusUI('error', 'Sheets Sync Timeout');
-    showToast('Connection timed out. Check your Web App URL or create a New Deployment in Google Apps Script.', 'error');
+    showToast('Connection timed out. Check your Web App URL or click "Authorize access" in Google Apps Script.', 'error');
   }, 10000);
 
   function cleanup() {
@@ -1016,37 +1016,28 @@ function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend (v1.1.4 - Safe Spreadsheet Resolver & JSONP)
+ * RECOVERY TRACKER - Google Apps Script Backend (v1.1.6 - Minimal OAuth Permissions & Pure JSONP)
  * 
  * Instructions:
- * 1. Open Google Sheets (or Apps Script).
- * 2. Replace all existing code in Code.gs with this exact file.
- * 3. Click Save (disk icon).
- * 4. Click Deploy > New deployment.
- * 5. Set 'Execute as': Me
- * 6. Set 'Who has access': Anyone  <-- CRITICAL!
- * 7. Click Deploy, copy the resulting Web App URL, and paste into Recovery Tracker Settings.
+ * 1. Open your Google Sheet.
+ * 2. Go to Extensions > Apps Script.
+ * 3. Delete all code in Code.gs and paste this exact file.
+ * 4. Click Save (disk icon).
+ * 5. Click Deploy > New deployment.
+ * 6. Set 'Execute as': Me
+ * 7. Set 'Who has access': Anyone  <-- CRITICAL!
+ * 8. Click Deploy, click "Authorize access" (Advanced > Go to script > Allow), and copy the Web App URL!
+ * 9. Paste the Web App URL into Recovery Tracker Settings.
  */
 
 function getSpreadsheet() {
-  let ss = null;
-  try {
-    ss = SpreadsheetApp.getActiveSpreadsheet();
-  } catch (e) {}
-
-  if (!ss) {
-    const files = DriveApp.getFilesByName("Recovery Tracker DB");
-    if (files.hasNext()) {
-      ss = SpreadsheetApp.open(files.next());
-    } else {
-      ss = SpreadsheetApp.create("Recovery Tracker DB");
-    }
-  }
-  return ss;
+  return SpreadsheetApp.getActiveSpreadsheet();
 }
 
 function setupSheets() {
   const ss = getSpreadsheet();
+  if (!ss) return;
+
   let medSheet = ss.getSheetByName('Medications');
   if (!medSheet) {
     medSheet = ss.insertSheet('Medications');
@@ -1076,6 +1067,10 @@ function doGet(e) {
     }
 
     const ss = getSpreadsheet();
+    if (!ss) {
+      return respond({ status: 'error', message: 'Spreadsheet not bound. Please run script from Extensions > Apps Script inside Google Sheets.' }, callback);
+    }
+
     const medSheet = ss.getSheetByName('Medications');
     const logSheet = ss.getSheetByName('DoseLogs');
 
@@ -1135,6 +1130,8 @@ function doPost(e) {
 
 function saveAllData(medications, logs) {
   const ss = getSpreadsheet();
+  if (!ss) return;
+
   const medSheet = ss.getSheetByName('Medications');
   medSheet.clearContents();
   medSheet.appendRow(['id', 'name', 'type', 'quantity', 'unit', 'minIntervalHours', 'scheduledSlots', 'notes', 'updatedAt']);
@@ -1175,6 +1172,7 @@ function saveAllData(medications, logs) {
 }
 
 function getSheetObjects(sheet) {
+  if (!sheet) return [];
   const rows = sheet.getDataRange().getValues();
   if (rows.length <= 1) return [];
   const headers = rows[0];
