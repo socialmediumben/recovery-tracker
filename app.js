@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 2.0.0 - Medications & 4 Medical Drains Output Tracker
+ * Version 2.0.1 - Fixed Drain Sync Engine & Manual Sync Push
  */
 
 // Global Application State
@@ -10,7 +10,7 @@ const STATE = {
   drainLogs: [],
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v2.0.0',
+  version: 'v2.0.1',
   theme: 'light',
   lastSyncedTime: null,
   isInitialFetchDone: false,
@@ -197,7 +197,7 @@ function clearAllData() {
 }
 
 /* ==========================================================================
-   MULTI-DEVICE SMART SYNC ENGINE (PULL-FIRST SAFETY GUARD)
+   MULTI-DEVICE SMART SYNC ENGINE (v2.0.1)
    ========================================================================== */
 
 function fetchFromGoogleSheets() {
@@ -228,6 +228,11 @@ function fetchFromGoogleSheets() {
       const remoteMeds = json.data.medications || [];
       const remoteLogs = json.data.logs || [];
       const remoteDrainLogs = json.data.drainLogs || [];
+
+      // Check if remote backend missing drainLogs support
+      if (json.data.drainLogs === undefined && STATE.drainLogs.length > 0) {
+        console.warn('Google Sheets script needs v2.0.0 update in Code.gs');
+      }
 
       const { mergedMeds, mergedLogs, mergedDrainLogs, changesDetected } = smartMergeData(
         STATE.medications, STATE.logs, STATE.drainLogs,
@@ -263,7 +268,7 @@ function fetchFromGoogleSheets() {
 }
 
 /**
- * 3-Way Conflict-Free Smart Merge Algorithm (Meds, Dose Logs, Drain Logs)
+ * 3-Way Conflict-Free Smart Merge Algorithm
  */
 function smartMergeData(localMeds, localLogs, localDrains, remoteMeds, remoteLogs, remoteDrains) {
   let changesDetected = false;
@@ -281,7 +286,7 @@ function smartMergeData(localMeds, localLogs, localDrains, remoteMeds, remoteLog
   mergedLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   if (mergedLogs.length !== remoteLogs.length) changesDetected = true;
 
-  // 2. MERGE DRAIN LOGS (v2.0.0)
+  // 2. MERGE DRAIN LOGS
   const drainMap = new Map();
   [...remoteDrains, ...localDrains].forEach(d => {
     if (d && d.id) {
@@ -319,12 +324,7 @@ function smartMergeData(localMeds, localLogs, localDrains, remoteMeds, remoteLog
 function syncToGoogleSheets(fetchAfterSync = false) {
   if (!STATE.appsScriptUrl) return;
 
-  // SAFETY GUARD: Do not push empty state if initial fetch has not completed yet
-  if (!STATE.isInitialFetchDone && STATE.medications.length === 0 && STATE.logs.length === 0 && STATE.drainLogs.length === 0) {
-    console.log('Safety Guard triggered: Skipping remote overwrite on initial setup.');
-    fetchFromGoogleSheets();
-    return;
-  }
+  updateSyncStatusUI('offline', 'Syncing...');
 
   fetch(STATE.appsScriptUrl, {
     method: 'POST',
@@ -339,7 +339,9 @@ function syncToGoogleSheets(fetchAfterSync = false) {
   }).then(() => {
     STATE.lastSyncedTime = new Date();
     updateSyncStatusUI('online', 'Google Sheets');
-    if (fetchAfterSync) fetchFromGoogleSheets();
+    if (fetchAfterSync) {
+      setTimeout(() => fetchFromGoogleSheets(), 500);
+    }
   }).catch((err) => {
     console.warn('POST failed, attempting JSONP save fallback...', err);
     const payloadStr = encodeURIComponent(JSON.stringify({
@@ -359,6 +361,7 @@ function syncToGoogleSheets(fetchAfterSync = false) {
       if (json && json.status === 'success') {
         STATE.lastSyncedTime = new Date();
         updateSyncStatusUI('online', 'Google Sheets');
+        if (fetchAfterSync) fetchFromGoogleSheets();
       }
     };
     script.onerror = () => {
@@ -620,7 +623,7 @@ function renderDailySchedule() {
   }
 }
 
-// 5. MEDICAL DRAINS TRACKER VIEWS (v2.0.0)
+// 5. MEDICAL DRAINS TRACKER VIEWS
 function renderDrainViews() {
   const drainIds = ['drain_1', 'drain_2', 'drain_3', 'drain_4'];
   const todayStr = new Date().toISOString().split('T')[0];
@@ -852,7 +855,6 @@ function setupEventListeners() {
       STATE.appsScriptUrl = urlInput;
       STATE.syncMode = 'sheets';
       localStorage.setItem('rt_apps_script_url', urlInput);
-      // PULL FIRST Policy: Always fetch from Google Sheets first!
       fetchFromGoogleSheets();
       showToast('Saved Web App URL! Fetching cloud data...');
     } else {
@@ -865,8 +867,9 @@ function setupEventListeners() {
 
   document.getElementById('btnManualSync')?.addEventListener('click', () => {
     if (STATE.appsScriptUrl) {
-      fetchFromGoogleSheets();
-      showToast('2-Way Smart Sync triggered!');
+      // Manual Sync: Push local state FIRST, then fetch and merge!
+      syncToGoogleSheets(true);
+      showToast('Pushing local data and syncing with Google Sheets...');
     } else {
       showToast('Please enter a Google Apps Script Web App URL first.', 'error');
     }
@@ -939,7 +942,7 @@ function closeInfoModal() {
   document.getElementById('modalInfo').classList.add('hidden');
 }
 
-// LOG DRAIN OUTPUT MODAL (v2.0.0)
+// LOG DRAIN OUTPUT MODAL
 function openLogDrainModal(defaultDrain = 'drain_1') {
   document.getElementById('drainSelect').value = defaultDrain;
   document.getElementById('drainVolume').value = '';
