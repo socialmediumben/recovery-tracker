@@ -1,24 +1,21 @@
 /**
- * RECOVERY TRACKER - Google Apps Script Backend (v1.1.5 - Minimal OAuth Permissions & Pure JSONP)
+ * RECOVERY TRACKER - Google Apps Script Backend (v1.2.0 - Multi-Device Smart Sync)
  * 
  * Instructions:
  * 1. Open your Google Sheet.
  * 2. Go to Extensions > Apps Script.
- * 3. Delete all code in Code.gs and paste this exact file.
+ * 3. Replace all existing code in Code.gs with this exact file.
  * 4. Click Save (disk icon).
- * 5. Click Deploy > New deployment.
+ * 5. Click Deploy > New deployment (or Manage Deployments > Edit > New Version).
  * 6. Set 'Execute as': Me
  * 7. Set 'Who has access': Anyone  <-- CRITICAL!
- * 8. Click Deploy, click "Authorize access" (Advanced > Go to script > Allow), and copy the Web App URL!
- * 9. Paste the Web App URL into Recovery Tracker Settings.
+ * 8. Click Deploy, copy the Web App URL, and paste into Recovery Tracker Settings.
  */
 
-// Active Sheet Binding
 function getSpreadsheet() {
   return SpreadsheetApp.getActiveSpreadsheet();
 }
 
-// Ensure sheet tabs exist with correct headers
 function setupSheets() {
   const ss = getSpreadsheet();
   if (!ss) return;
@@ -38,7 +35,6 @@ function setupSheets() {
   }
 }
 
-// GET Endpoint - Handles FETCH & JSONP for GET and SAVE actions
 function doGet(e) {
   try {
     setupSheets();
@@ -46,17 +42,16 @@ function doGet(e) {
     const action = params.action || 'get_all';
     const callback = params.callback;
 
-    // Handle Save action via GET/JSONP if requested
+    // Handle Save action via GET/JSONP
     if (action === 'save_all' && params.data) {
       const dataObj = JSON.parse(decodeURIComponent(params.data));
       saveAllData(dataObj.medications || [], dataObj.logs || []);
       return respond({ status: 'success', message: 'Data saved successfully' }, callback);
     }
 
-    // Default Action: Fetch all data
     const ss = getSpreadsheet();
     if (!ss) {
-      return respond({ status: 'error', message: 'Spreadsheet not bound. Please run script from Extensions > Apps Script inside Google Sheets.' }, callback);
+      return respond({ status: 'error', message: 'Spreadsheet not bound.' }, callback);
     }
 
     const medSheet = ss.getSheetByName('Medications');
@@ -73,7 +68,8 @@ function doGet(e) {
       unit: String(m.unit || 'Tablet'),
       minIntervalHours: Number(m.minIntervalHours || 0),
       scheduledSlots: m.scheduledSlots ? String(m.scheduledSlots).split(',') : [],
-      notes: String(m.notes || '')
+      notes: String(m.notes || ''),
+      updatedAt: String(m.updatedAt || '')
     })).filter(m => m.id);
 
     const logs = logData.map(l => ({
@@ -95,7 +91,6 @@ function doGet(e) {
   }
 }
 
-// POST Endpoint - Handles standard POST requests
 function doPost(e) {
   try {
     setupSheets();
@@ -117,7 +112,6 @@ function doPost(e) {
   }
 }
 
-// Helper to save all data to sheets
 function saveAllData(medications, logs) {
   const ss = getSpreadsheet();
   if (!ss) return;
@@ -137,7 +131,7 @@ function saveAllData(medications, logs) {
       m.minIntervalHours || 0,
       Array.isArray(m.scheduledSlots) ? m.scheduledSlots.join(',') : '',
       m.notes || '',
-      new Date().toISOString()
+      m.updatedAt || new Date().toISOString()
     ]);
   });
 
@@ -161,7 +155,6 @@ function saveAllData(medications, logs) {
   });
 }
 
-// Helper to convert sheet rows into JSON objects
 function getSheetObjects(sheet) {
   if (!sheet) return [];
   const rows = sheet.getDataRange().getValues();
@@ -181,7 +174,6 @@ function getSheetObjects(sheet) {
   return objects;
 }
 
-// Response Formatter
 function respond(payload, callback) {
   if (callback) {
     const jsonpOutput = callback + '(' + JSON.stringify(payload) + ')';

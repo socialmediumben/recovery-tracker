@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 1.1.6
+ * Version 1.2.0 - Multi-Device Smart Sync & 2-Way Merging
  */
 
 // Global Application State
@@ -9,9 +9,11 @@ const STATE = {
   logs: [],
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v1.1.6',
+  version: 'v1.2.0',
   theme: 'light',
-  timerInterval: null
+  lastSyncedTime: null,
+  timerInterval: null,
+  autoSyncInterval: null
 };
 
 // Optional Sample Data
@@ -25,7 +27,8 @@ const SAMPLE_DATA = {
       unit: 'Tablet',
       minIntervalHours: 4,
       scheduledSlots: [],
-      notes: 'Take with food for pain or inflammation. Minimum 4 hours between doses.'
+      notes: 'Take with food for pain or inflammation. Minimum 4 hours between doses.',
+      updatedAt: new Date().toISOString()
     },
     {
       id: 'med_sample_2',
@@ -35,7 +38,8 @@ const SAMPLE_DATA = {
       unit: 'Tablet',
       minIntervalHours: 6,
       scheduledSlots: [],
-      notes: 'For fever or headaches. Do not exceed 4,000 mg in 24 hours.'
+      notes: 'For fever or headaches. Do not exceed 4,000 mg in 24 hours.',
+      updatedAt: new Date().toISOString()
     },
     {
       id: 'med_sample_3',
@@ -45,7 +49,8 @@ const SAMPLE_DATA = {
       unit: 'Capsule',
       minIntervalHours: 0,
       scheduledSlots: ['Morning'],
-      notes: 'Take in the morning with breakfast.'
+      notes: 'Take in the morning with breakfast.',
+      updatedAt: new Date().toISOString()
     }
   ],
   logs: [
@@ -74,6 +79,7 @@ function initApp() {
   setupEventListeners();
   setupAppsScriptCodeDisplay();
   startLiveTimer();
+  startAutoSync();
   renderAllViews();
 }
 
@@ -146,7 +152,7 @@ function loadLocalState() {
   }
 }
 
-function saveState() {
+function saveState(triggerRemoteSync = true) {
   localStorage.setItem('rt_medications', JSON.stringify(STATE.medications));
   localStorage.setItem('rt_logs', JSON.stringify(STATE.logs));
   if (STATE.appsScriptUrl) {
@@ -155,7 +161,7 @@ function saveState() {
     localStorage.removeItem('rt_apps_script_url');
   }
 
-  if (STATE.syncMode === 'sheets' && STATE.appsScriptUrl) {
+  if (triggerRemoteSync && STATE.syncMode === 'sheets' && STATE.appsScriptUrl) {
     syncToGoogleSheets();
   }
 
@@ -175,13 +181,13 @@ function clearAllData() {
   if (confirm('Are you sure you want to clear all local medications and dose logs? This cannot be undone.')) {
     STATE.medications = [];
     STATE.logs = [];
-    saveState();
+    saveState(true);
     showToast('All local data cleared.', 'info');
   }
 }
 
 /* ==========================================================================
-   GOOGLE SHEETS SYNC CONTROLLER (JSONP ENGINE)
+   MULTI-DEVICE SMART SYNC ENGINE (2-WAY SMART MERGING)
    ========================================================================== */
 
 function fetchFromGoogleSheets() {
@@ -196,8 +202,7 @@ function fetchFromGoogleSheets() {
 
   const timeoutId = setTimeout(() => {
     cleanup();
-    updateSyncStatusUI('error', 'Sheets Sync Timeout');
-    showToast('Connection timed out. Check your Web App URL or click "Authorize access" in Google Apps Script.', 'error');
+    updateSyncStatusUI('error', 'Sheets Timeout');
   }, 10000);
 
   function cleanup() {
@@ -209,29 +214,90 @@ function fetchFromGoogleSheets() {
   window[callbackName] = (json) => {
     cleanup();
     if (json && json.status === 'success' && json.data) {
-      STATE.medications = json.data.medications || [];
-      STATE.logs = json.data.logs || [];
+      // Perform 2-Way Smart Merge between local state & remote Google Sheet state
+      const remoteMeds = json.data.medications || [];
+      const remoteLogs = json.data.logs || [];
+
+      const { mergedMeds, mergedLogs, changesDetected } = smartMergeData(
+        STATE.medications, STATE.logs, remoteMeds, remoteLogs
+      );
+
+      STATE.medications = mergedMeds;
+      STATE.logs = mergedLogs;
+      STATE.lastSyncedTime = new Date();
 
       localStorage.setItem('rt_medications', JSON.stringify(STATE.medications));
       localStorage.setItem('rt_logs', JSON.stringify(STATE.logs));
+
       updateSyncStatusUI('online', 'Google Sheets');
       renderAllViews();
+
+      // If local device had new logs or medications not yet on Google Sheet, sync back merged set
+      if (changesDetected) {
+        syncToGoogleSheets(false);
+      }
     } else {
       updateSyncStatusUI('error', 'Sync Failed');
-      showToast(json?.message || 'Google Sheets sync error', 'error');
     }
   };
 
   script.onerror = () => {
     cleanup();
-    updateSyncStatusUI('error', 'URL Error / 404');
-    showToast('404 or URL Error: Ensure you clicked "Deploy > New deployment" in Google Apps Script and copied the fresh URL.', 'error');
+    updateSyncStatusUI('error', 'CORS / URL Error');
   };
 
   document.body.appendChild(script);
 }
 
-function syncToGoogleSheets() {
+/**
+ * 2-Way Conflict-Free Smart Merge Algorithm
+ * Combines logs and medications without overwriting either device!
+ */
+function smartMergeData(localMeds, localLogs, remoteMeds, remoteLogs) {
+  let changesDetected = false;
+
+  // 1. MERGE DOSE LOGS (Union by unique ID)
+  const logMap = new Map();
+  [...remoteLogs, ...localLogs].forEach(log => {
+    if (log && log.id) {
+      if (!logMap.has(log.id)) {
+        logMap.set(log.id, log);
+      }
+    }
+  });
+  const mergedLogs = Array.from(logMap.values());
+  mergedLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  if (mergedLogs.length !== remoteLogs.length) {
+    changesDetected = true;
+  }
+
+  // 2. MERGE MEDICATIONS (By ID & updatedAt timestamp)
+  const medMap = new Map();
+  [...remoteMeds, ...localMeds].forEach(med => {
+    if (med && med.id) {
+      const existing = medMap.get(med.id);
+      if (!existing) {
+        medMap.set(med.id, med);
+      } else {
+        const existingTime = new Date(existing.updatedAt || 0).getTime();
+        const newTime = new Date(med.updatedAt || 0).getTime();
+        if (newTime >= existingTime) {
+          medMap.set(med.id, med);
+        }
+      }
+    }
+  });
+  const mergedMeds = Array.from(medMap.values());
+
+  if (mergedMeds.length !== remoteMeds.length) {
+    changesDetected = true;
+  }
+
+  return { mergedMeds, mergedLogs, changesDetected };
+}
+
+function syncToGoogleSheets(fetchAfterSync = false) {
   if (!STATE.appsScriptUrl) return;
 
   fetch(STATE.appsScriptUrl, {
@@ -244,9 +310,11 @@ function syncToGoogleSheets() {
     }),
     mode: 'no-cors'
   }).then(() => {
+    STATE.lastSyncedTime = new Date();
     updateSyncStatusUI('online', 'Google Sheets');
+    if (fetchAfterSync) fetchFromGoogleSheets();
   }).catch((err) => {
-    console.warn('POST failed, attempting JSONP save fallback...', err);
+    console.warn('POST failed, attempting GET/JSONP save fallback...', err);
     const payloadStr = encodeURIComponent(JSON.stringify({
       medications: STATE.medications,
       logs: STATE.logs
@@ -261,16 +329,40 @@ function syncToGoogleSheets() {
       delete window[callbackName];
       if (script.parentNode) script.parentNode.removeChild(script);
       if (json && json.status === 'success') {
+        STATE.lastSyncedTime = new Date();
         updateSyncStatusUI('online', 'Google Sheets');
       }
     };
     script.onerror = () => {
       delete window[callbackName];
       if (script.parentNode) script.parentNode.removeChild(script);
-      updateSyncStatusUI('error', 'Save Failed');
+      updateSyncStatusUI('error', 'Save Error');
     };
     document.body.appendChild(script);
   });
+}
+
+function startAutoSync() {
+  // 1. Auto-sync on window/tab focus (when switching to app on phone or laptop)
+  window.addEventListener('focus', () => {
+    if (STATE.syncMode === 'sheets' && STATE.appsScriptUrl) {
+      fetchFromGoogleSheets();
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && STATE.syncMode === 'sheets' && STATE.appsScriptUrl) {
+      fetchFromGoogleSheets();
+    }
+  });
+
+  // 2. Periodic background auto-sync every 30 seconds
+  if (STATE.autoSyncInterval) clearInterval(STATE.autoSyncInterval);
+  STATE.autoSyncInterval = setInterval(() => {
+    if (STATE.syncMode === 'sheets' && STATE.appsScriptUrl) {
+      fetchFromGoogleSheets();
+    }
+  }, 30000);
 }
 
 function updateSyncStatusUI(status, label) {
@@ -668,11 +760,11 @@ function setupEventListeners() {
       STATE.syncMode = 'sheets';
       saveState();
       fetchFromGoogleSheets();
-      showToast('Saved Web App URL and initiating sync!');
+      showToast('Saved Web App URL and initiating 2-way sync!');
     } else {
       STATE.appsScriptUrl = '';
       STATE.syncMode = 'local';
-      saveState();
+      saveState(false);
       showToast('Switched to LocalStorage mode.', 'info');
     }
   });
@@ -680,7 +772,7 @@ function setupEventListeners() {
   document.getElementById('btnManualSync')?.addEventListener('click', () => {
     if (STATE.appsScriptUrl) {
       fetchFromGoogleSheets();
-      showToast('Manual sync triggered.');
+      showToast('2-Way Smart Sync triggered!');
     } else {
       showToast('Please enter a Google Apps Script Web App URL first.', 'error');
     }
@@ -819,7 +911,8 @@ function handleSaveMedication(e) {
     unit,
     minIntervalHours: type === 'as-needed' ? minIntervalHours : 0,
     scheduledSlots: type === 'scheduled' ? scheduledSlots : [],
-    notes
+    notes,
+    updatedAt: new Date().toISOString()
   };
 
   if (existingIdx >= 0) {
@@ -1016,18 +1109,17 @@ function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend (v1.1.6 - Minimal OAuth Permissions & Pure JSONP)
+ * RECOVERY TRACKER - Google Apps Script Backend (v1.2.0 - Multi-Device Smart Sync)
  * 
  * Instructions:
  * 1. Open your Google Sheet.
  * 2. Go to Extensions > Apps Script.
- * 3. Delete all code in Code.gs and paste this exact file.
+ * 3. Replace all existing code in Code.gs with this exact file.
  * 4. Click Save (disk icon).
- * 5. Click Deploy > New deployment.
+ * 5. Click Deploy > New deployment (or Manage Deployments > Edit > New Version).
  * 6. Set 'Execute as': Me
  * 7. Set 'Who has access': Anyone  <-- CRITICAL!
- * 8. Click Deploy, click "Authorize access" (Advanced > Go to script > Allow), and copy the Web App URL!
- * 9. Paste the Web App URL into Recovery Tracker Settings.
+ * 8. Click Deploy, copy the Web App URL, and paste into Recovery Tracker Settings.
  */
 
 function getSpreadsheet() {
@@ -1067,9 +1159,7 @@ function doGet(e) {
     }
 
     const ss = getSpreadsheet();
-    if (!ss) {
-      return respond({ status: 'error', message: 'Spreadsheet not bound. Please run script from Extensions > Apps Script inside Google Sheets.' }, callback);
-    }
+    if (!ss) return respond({ status: 'error', message: 'Spreadsheet not bound.' }, callback);
 
     const medSheet = ss.getSheetByName('Medications');
     const logSheet = ss.getSheetByName('DoseLogs');
@@ -1085,7 +1175,8 @@ function doGet(e) {
       unit: String(m.unit || 'Tablet'),
       minIntervalHours: Number(m.minIntervalHours || 0),
       scheduledSlots: m.scheduledSlots ? String(m.scheduledSlots).split(',') : [],
-      notes: String(m.notes || '')
+      notes: String(m.notes || ''),
+      updatedAt: String(m.updatedAt || '')
     })).filter(m => m.id);
 
     const logs = logData.map(l => ({
@@ -1147,7 +1238,7 @@ function saveAllData(medications, logs) {
       m.minIntervalHours || 0,
       Array.isArray(m.scheduledSlots) ? m.scheduledSlots.join(',') : '',
       m.notes || '',
-      new Date().toISOString()
+      m.updatedAt || new Date().toISOString()
     ]);
   });
 
