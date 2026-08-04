@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Recovery Tracker - Smart Medication & Dose Manager</title>
+  <title>Recovery Tracker - Smart Medication & Drain Manager</title>
   <!-- Google Fonts & Font Awesome Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,7 +21,7 @@
         </div>
         <div class="brand-text">
           <h1>Recovery Tracker</h1>
-          <span class="brand-tagline">Smart Medication & Dose Interval Tracker <span class="badge-version" id="versionBadge">v1.1.6</span></span>
+          <span class="brand-tagline">Medications &amp; Medical Drain Manager <span class="badge-version" id="versionBadge">v2.0.0</span></span>
         </div>
       </div>
 
@@ -40,7 +40,10 @@
           <i class="fa-solid fa-circle-info"></i> Information
         </button>
         <button class="btn btn-primary" id="btnAddMedication">
-          <i class="fa-solid fa-plus"></i> Add Medication
+          <i class="fa-solid fa-plus"></i> Add Med
+        </button>
+        <button class="btn btn-danger" id="btnQuickLogDrain">
+          <i class="fa-solid fa-droplet"></i> Log Drain
         </button>
       </div>
     </div>
@@ -52,11 +55,14 @@
       <button class="nav-tab active" data-tab="tab-dashboard">
         <i class="fa-solid fa-pills"></i> All Medications
       </button>
+      <button class="nav-tab" data-tab="tab-drains">
+        <i class="fa-solid fa-vial-circle-check"></i> Medical Drains (4)
+      </button>
       <button class="nav-tab" data-tab="tab-schedule">
         <i class="fa-solid fa-calendar-check"></i> Daily Schedule
       </button>
       <button class="nav-tab" data-tab="tab-reports">
-        <i class="fa-solid fa-chart-line"></i> Logs & Reports
+        <i class="fa-solid fa-chart-line"></i> Logs &amp; Reports
       </button>
       <button class="nav-tab" data-tab="tab-settings">
         <i class="fa-solid fa-sliders"></i> Google Sheets Sync
@@ -94,10 +100,10 @@
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon bg-amber"><i class="fa-solid fa-calendar-day"></i></div>
+            <div class="stat-icon bg-amber"><i class="fa-solid fa-droplet"></i></div>
             <div class="stat-details">
-              <span class="stat-value" id="statDosesToday">0</span>
-              <span class="stat-label">Total Doses Logged Today</span>
+              <span class="stat-value" id="statDrainTotalToday">0 ml</span>
+              <span class="stat-label">Total Drain Fluid Today</span>
             </div>
           </div>
         </div>
@@ -129,7 +135,123 @@
         </div>
       </section>
 
-      <!-- TAB 2: DAILY SCHEDULE VIEW -->
+      <!-- TAB 2: MEDICAL DRAINS TRACKER (v2.0.0) -->
+      <section class="tab-content" id="tab-drains">
+        <div class="reports-header">
+          <div>
+            <h2><i class="fa-solid fa-vial-circle-check color-rose"></i> Medical Drain Output Tracker</h2>
+            <p class="section-desc">Track output volume (ml/cc), fluid character, and emptying frequency across all 4 surgical drains.</p>
+          </div>
+          <div class="report-actions">
+            <button class="btn btn-danger" onclick="openLogDrainModal()">
+              <i class="fa-solid fa-plus"></i> Record Drain Output
+            </button>
+          </div>
+        </div>
+
+        <!-- Drain Summary Cards Grid -->
+        <div class="drains-summary-grid">
+          <!-- Drain 1 -->
+          <div class="drain-card">
+            <div class="drain-card-header">
+              <div class="drain-badge badge-d1">Drain 1</div>
+              <h3 id="d1Name">Drain 1</h3>
+            </div>
+            <div class="drain-card-body">
+              <div class="drain-stat-big"><span id="d1TodayTotal">0</span> <small>ml today</small></div>
+              <div class="drain-meta">
+                <div><i class="fa-solid fa-clock"></i> Last Emptied: <strong id="d1LastTime">Never</strong></div>
+                <div><i class="fa-solid fa-eye"></i> Last Fluid: <strong id="d1LastChar">N/A</strong></div>
+              </div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="openLogDrainModal('drain_1')">
+              <i class="fa-solid fa-plus"></i> Log Output
+            </button>
+          </div>
+
+          <!-- Drain 2 -->
+          <div class="drain-card">
+            <div class="drain-card-header">
+              <div class="drain-badge badge-d2">Drain 2</div>
+              <h3 id="d2Name">Drain 2</h3>
+            </div>
+            <div class="drain-card-body">
+              <div class="drain-stat-big"><span id="d2TodayTotal">0</span> <small>ml today</small></div>
+              <div class="drain-meta">
+                <div><i class="fa-solid fa-clock"></i> Last Emptied: <strong id="d2LastTime">Never</strong></div>
+                <div><i class="fa-solid fa-eye"></i> Last Fluid: <strong id="d2LastChar">N/A</strong></div>
+              </div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="openLogDrainModal('drain_2')">
+              <i class="fa-solid fa-plus"></i> Log Output
+            </button>
+          </div>
+
+          <!-- Drain 3 -->
+          <div class="drain-card">
+            <div class="drain-card-header">
+              <div class="drain-badge badge-d3">Drain 3</div>
+              <h3 id="d3Name">Drain 3</h3>
+            </div>
+            <div class="drain-card-body">
+              <div class="drain-stat-big"><span id="d3TodayTotal">0</span> <small>ml today</small></div>
+              <div class="drain-meta">
+                <div><i class="fa-solid fa-clock"></i> Last Emptied: <strong id="d3LastTime">Never</strong></div>
+                <div><i class="fa-solid fa-eye"></i> Last Fluid: <strong id="d3LastChar">N/A</strong></div>
+              </div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="openLogDrainModal('drain_3')">
+              <i class="fa-solid fa-plus"></i> Log Output
+            </button>
+          </div>
+
+          <!-- Drain 4 -->
+          <div class="drain-card">
+            <div class="drain-card-header">
+              <div class="drain-badge badge-d4">Drain 4</div>
+              <h3 id="d4Name">Drain 4</h3>
+            </div>
+            <div class="drain-card-body">
+              <div class="drain-stat-big"><span id="d4TodayTotal">0</span> <small>ml today</small></div>
+              <div class="drain-meta">
+                <div><i class="fa-solid fa-clock"></i> Last Emptied: <strong id="d4LastTime">Never</strong></div>
+                <div><i class="fa-solid fa-eye"></i> Last Fluid: <strong id="d4LastChar">N/A</strong></div>
+              </div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="openLogDrainModal('drain_4')">
+              <i class="fa-solid fa-plus"></i> Log Output
+            </button>
+          </div>
+        </div>
+
+        <!-- Recent Drain Output Timeline Table -->
+        <div class="settings-card" style="margin-top: 2rem;">
+          <h3><i class="fa-solid fa-list"></i> Drain Output History</h3>
+          <div class="table-responsive" style="margin-top: 1rem;">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Drain</th>
+                  <th>Volume (ml)</th>
+                  <th>Fluid Character</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="drainTableBody">
+                <!-- Dynamically Populated -->
+              </tbody>
+            </table>
+          </div>
+          <div class="empty-state hidden" id="emptyDrainState">
+            <i class="fa-solid fa-vial"></i>
+            <p>No drain output entries logged yet.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: DAILY SCHEDULE VIEW -->
       <section class="tab-content" id="tab-schedule">
         <div class="schedule-header">
           <div>
@@ -146,9 +268,7 @@
               <h3>Morning</h3>
               <span class="slot-badge" id="badgeMorning">0 / 0</span>
             </div>
-            <div class="slot-body" id="slotListMorning">
-              <!-- Dynamically Populated -->
-            </div>
+            <div class="slot-body" id="slotListMorning"></div>
           </div>
 
           <!-- Afternoon Slot -->
@@ -158,9 +278,7 @@
               <h3>Afternoon</h3>
               <span class="slot-badge" id="badgeAfternoon">0 / 0</span>
             </div>
-            <div class="slot-body" id="slotListAfternoon">
-              <!-- Dynamically Populated -->
-            </div>
+            <div class="slot-body" id="slotListAfternoon"></div>
           </div>
 
           <!-- Evening Slot -->
@@ -170,9 +288,7 @@
               <h3>Evening</h3>
               <span class="slot-badge" id="badgeEvening">0 / 0</span>
             </div>
-            <div class="slot-body" id="slotListEvening">
-              <!-- Dynamically Populated -->
-            </div>
+            <div class="slot-body" id="slotListEvening"></div>
           </div>
 
           <!-- Night Slot -->
@@ -182,19 +298,17 @@
               <h3>Night</h3>
               <span class="slot-badge" id="badgeNight">0 / 0</span>
             </div>
-            <div class="slot-body" id="slotListNight">
-              <!-- Dynamically Populated -->
-            </div>
+            <div class="slot-body" id="slotListNight"></div>
           </div>
         </div>
       </section>
 
-      <!-- TAB 3: LOGS & REPORTS -->
+      <!-- TAB 4: LOGS & REPORTS -->
       <section class="tab-content" id="tab-reports">
         <div class="reports-header">
           <div>
-            <h2><i class="fa-solid fa-file-medical"></i> Medication History & Reports</h2>
-            <p class="section-desc">View, filter, export, or print a summary report of all logged medication instances.</p>
+            <h2><i class="fa-solid fa-file-medical"></i> History &amp; Doctor Reports</h2>
+            <p class="section-desc">View, filter, export, or print a complete summary report of medication doses and medical drain outputs.</p>
           </div>
           <div class="report-actions">
             <button class="btn btn-outline" id="btnExportCSV">
@@ -210,7 +324,7 @@
         <div class="filter-card">
           <div class="filter-group">
             <label for="filterSearch"><i class="fa-solid fa-search"></i> Search</label>
-            <input type="text" id="filterSearch" placeholder="Search medication or notes...">
+            <input type="text" id="filterSearch" placeholder="Search medication, drain, or notes...">
           </div>
           <div class="filter-group">
             <label for="filterDateRange"><i class="fa-solid fa-calendar"></i> Date Range</label>
@@ -222,11 +336,12 @@
             </select>
           </div>
           <div class="filter-group">
-            <label for="filterMedType"><i class="fa-solid fa-filter"></i> Medication Type</label>
+            <label for="filterMedType"><i class="fa-solid fa-filter"></i> Category Filter</label>
             <select id="filterMedType">
-              <option value="all">All Types</option>
-              <option value="as-needed">As-Needed Only</option>
-              <option value="scheduled">Scheduled Only</option>
+              <option value="all">All Records (Meds &amp; Drains)</option>
+              <option value="as-needed">As-Needed Meds</option>
+              <option value="scheduled">Scheduled Meds</option>
+              <option value="drains">Medical Drains</option>
             </select>
           </div>
         </div>
@@ -234,38 +349,53 @@
         <!-- Printable Report Area -->
         <div class="printable-report" id="printableArea">
           <div class="print-header">
-            <h1>Recovery Tracker - Medication Administration Report</h1>
+            <h1>Recovery Tracker - Comprehensive Clinical Report</h1>
             <p id="printMetaDate">Generated on: August 4, 2026</p>
           </div>
 
+          <h3 class="print-section-title">Medication Dose Administration</h3>
           <div class="table-responsive">
             <table class="report-table">
               <thead>
                 <tr>
-                  <th>Date & Time</th>
+                  <th>Date &amp; Time</th>
                   <th>Medication Name</th>
                   <th>Type</th>
                   <th>Dosage</th>
-                  <th>Time Slot / Context</th>
+                  <th>Context</th>
                   <th>Notes</th>
                   <th class="no-print">Actions</th>
                 </tr>
               </thead>
-              <tbody id="logsTableBody">
-                <!-- Dynamically populated -->
-              </tbody>
+              <tbody id="logsTableBody"></tbody>
+            </table>
+          </div>
+
+          <h3 class="print-section-title" style="margin-top: 2rem;">Medical Drain Output Summary</h3>
+          <div class="table-responsive">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Drain Name</th>
+                  <th>Volume (ml)</th>
+                  <th>Fluid Character</th>
+                  <th>Notes</th>
+                  <th class="no-print">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="printDrainTableBody"></tbody>
             </table>
           </div>
 
           <div class="empty-state hidden" id="emptyLogsState">
             <i class="fa-solid fa-prescription-bottle-medical"></i>
             <h3>No logs found matching your filters</h3>
-            <p>Log a dose from the dashboard to populate your history.</p>
           </div>
         </div>
       </section>
 
-      <!-- TAB 4: GOOGLE SHEETS SETTINGS -->
+      <!-- TAB 5: GOOGLE SHEETS SETTINGS -->
       <section class="tab-content" id="tab-settings">
         <div class="settings-card">
           <h2><i class="fa-brands fa-google-drive color-green"></i> Google Sheets Backend Connection</h2>
@@ -287,15 +417,14 @@
               </button>
             </div>
 
-            <!-- CORS / Permission Alert Warning Box -->
+            <!-- CORS / Safety Alert Warning Box -->
             <div class="cors-warning-box">
-              <h4><i class="fa-solid fa-shield-halved"></i> Deployment Requirements for Google Sheets</h4>
-              <p>When deploying your Google Apps Script Web App, ensure these exact settings are selected:</p>
+              <h4><i class="fa-solid fa-shield-halved"></i> Phone Setup Safety &amp; Multi-Device Protection</h4>
+              <p>When connecting a phone or new device, Recovery Tracker uses a <strong>Pull-First Policy</strong>. It fetches your cloud data first to prevent a new device from wiping your Google Sheet.</p>
               <ul>
                 <li><strong>Execute as:</strong> <code>Me</code></li>
-                <li><strong>Who has access:</strong> <code>Anyone</code> <em>(DO NOT select "Only me" or "Anyone with Google account")</em></li>
+                <li><strong>Who has access:</strong> <code>Anyone</code></li>
               </ul>
-              <small>If you created a new deployment, paste the <strong>new Web App URL</strong> above and click Save &amp; Test Connection!</small>
             </div>
           </div>
 
@@ -305,7 +434,7 @@
               <li>Open your Google Sheet (create one at <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a> if needed).</li>
               <li>Click <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
               <li>Delete any existing code in the editor.</li>
-              <li>Copy and paste the full Apps Script code below into the editor:</li>
+              <li>Copy and paste the full Apps Script v2.0.0 code below into the editor:</li>
             </ol>
 
             <div class="code-snippet-box">
@@ -350,14 +479,14 @@
       </div>
       <div class="modal-body">
         <div class="info-hero">
-          <div class="info-version-pill">Version 1.1.6</div>
-          <h3>Your Personal Medical & Dose Compliance Companion</h3>
-          <p>Recovery Tracker is designed to make managing medications effortless, safe, and transparent.</p>
+          <div class="info-version-pill">Version 2.0.0</div>
+          <h3>Your Personal Medical &amp; Recovery Companion</h3>
+          <p>Recovery Tracker manages medication schedules, dose compliance, and 4 surgical drain outputs.</p>
         </div>
 
         <div class="info-tabs">
           <button class="info-tab-btn active" data-infotab="info-guide">How to Use</button>
-          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v1.1.6)</button>
+          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v2.0.0)</button>
           <button class="info-tab-btn" data-infotab="info-about">Technical Info</button>
         </div>
 
@@ -367,28 +496,21 @@
               <div class="guide-num">1</div>
               <div>
                 <strong>Tracking "As-Needed" Medications</strong>
-                <p>As-Needed medications specify a <em>minimum interval</em> (e.g. every 4 hours or more). When you log a dose, the card turns <span class="badge-red">RED</span> during the cooldown period and displays a live countdown. Once the minimum interval elapses, the card turns <span class="badge-green">GREEN</span> signalizing it is safe to take again.</p>
+                <p>Card turns <span class="badge-red">RED</span> during minimum interval cooldown with a live countdown, and <span class="badge-green">GREEN</span> when ready.</p>
               </div>
             </li>
             <li>
               <div class="guide-num">2</div>
               <div>
-                <strong>Tracking "Scheduled" Medications</strong>
-                <p>Scheduled medications are assigned to specific daily time slots: <strong>Morning</strong>, <strong>Afternoon</strong>, <strong>Evening</strong>, or <strong>Night</strong>. You can mark them off directly from the Dashboard or the Daily Schedule checklist.</p>
+                <strong>Medical Drain Output Tracking (4 Drains)</strong>
+                <p>Record output fluid volume (ml) and fluid character (Serosanguinous, Serous, Sanguinous, Purulent) for Drains 1, 2, 3, and 4.</p>
               </div>
             </li>
             <li>
               <div class="guide-num">3</div>
               <div>
-                <strong>Logging Doses & Notes</strong>
-                <p>Click "Take Dose" or "Log Dose" on any medication card to log exact timestamp, quantity, and notes (such as symptoms, meal context, or pain level).</p>
-              </div>
-            </li>
-            <li>
-              <div class="guide-num">4</div>
-              <div>
-                <strong>Reports & Doctor Exports</strong>
-                <p>Navigate to the <strong>Logs & Reports</strong> tab to view your complete timeline, filter by date ranges, export CSV data, or generate a formatted printout for your doctor appointments.</p>
+                <strong>Phone &amp; Multi-Device Protection</strong>
+                <p>The app pulls data from Google Sheets first when saving a URL on a phone, ensuring zero accidental overwrites.</p>
               </div>
             </li>
           </ul>
@@ -397,27 +519,19 @@
         <div class="info-tab-content" id="info-changelog">
           <div class="changelog-timeline">
             <div class="changelog-item">
-              <span class="changelog-version">v1.1.6 (Current Release)</span>
+              <span class="changelog-version">v2.0.0 (Current Release)</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>🎉 Verified live endpoint test for Google Apps Script Web App URL (`AKfycbzRCtVffwZt...`).</li>
-                <li>🔄 Auto-overrides stale cached local URLs when saving a fresh Web App URL.</li>
-                <li>🔖 Synchronized version badges (`v1.1.6`) and in-app changelog.</li>
+                <li>🩸 Added <strong>Medical Drain Output Tracker</strong> for 4 surgical drains with 24-hr volume stats and fluid character logging.</li>
+                <li>🛡️ Implemented <strong>Pull-First Cloud Safety Guard</strong> to prevent fresh device setups from overwriting Google Sheets.</li>
+                <li>📊 Integrated Drain Output Logs into CSV exports and Printable Clinical Reports.</li>
               </ul>
             </div>
             <div class="changelog-item" style="margin-top: 1rem;">
-              <span class="changelog-version">v1.1.5</span>
+              <span class="changelog-version">v1.2.0</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>⚡ Minimal OAuth scope optimization to eliminate authorization hanging.</li>
-                <li>🔑 Clarified 1-click Google OAuth authorization steps.</li>
-              </ul>
-            </div>
-            <div class="changelog-item" style="margin-top: 1rem;">
-              <span class="changelog-version">v1.1.4</span>
-              <span class="changelog-date">August 2026</span>
-              <ul>
-                <li>🛡️ Safe lazy spreadsheet resolver supporting bound and standalone scripts.</li>
+                <li>🔄 2-Way Conflict-Free Smart Merge Engine &amp; Auto-sync on tab focus.</li>
               </ul>
             </div>
           </div>
@@ -464,7 +578,7 @@
           </div>
 
           <div class="form-group">
-            <label for="logTimestamp">Date & Time Taken</label>
+            <label for="logTimestamp">Date &amp; Time Taken</label>
             <input type="datetime-local" id="logTimestamp" required>
           </div>
 
@@ -482,7 +596,62 @@
     </div>
   </div>
 
-  <!-- MODAL 3: ADD / EDIT MEDICATION MODAL -->
+  <!-- MODAL 3: LOG DRAIN OUTPUT MODAL (v2.0.0) -->
+  <div class="modal-overlay hidden" id="modalDrainOutput">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2><i class="fa-solid fa-droplet color-rose"></i> Log Drain Output</h2>
+        <button class="modal-close" id="btnCloseDrainModal">&times;</button>
+      </div>
+      <form id="formDrainOutput">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="drainSelect">Select Medical Drain *</label>
+            <select id="drainSelect" required>
+              <option value="drain_1">Drain 1</option>
+              <option value="drain_2">Drain 2</option>
+              <option value="drain_3">Drain 3</option>
+              <option value="drain_4">Drain 4</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="drainVolume">Output Volume (ml / cc) *</label>
+              <input type="number" id="drainVolume" step="1" min="1" placeholder="e.g. 25, 45, 120" required>
+            </div>
+            <div class="form-group">
+              <label for="drainCharacter">Fluid Character *</label>
+              <select id="drainCharacter" required>
+                <option value="Serosanguinous (pink/red)">Serosanguinous (pink/red)</option>
+                <option value="Serous (straw/clear)">Serous (straw/clear)</option>
+                <option value="Sanguinous (bright red)">Sanguinous (bright red)</option>
+                <option value="Purulent (cloudy/milky)">Purulent (cloudy/milky)</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="drainTimestamp">Date &amp; Time Emptied *</label>
+            <input type="datetime-local" id="drainTimestamp" required>
+          </div>
+
+          <div class="form-group">
+            <label for="drainNotes">Notes (Optional)</label>
+            <textarea id="drainNotes" rows="2" placeholder="e.g. Stripped tubing, suction bulb re-primed, dressing intact..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelDrainModal">Cancel</button>
+          <button type="submit" class="btn btn-danger"><i class="fa-solid fa-droplet"></i> Save Drain Entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: ADD / EDIT MEDICATION MODAL -->
   <div class="modal-overlay hidden" id="modalMedication">
     <div class="modal-card">
       <div class="modal-header">
@@ -529,29 +698,21 @@
             </select>
           </div>
 
-          <!-- As-Needed Specific Field -->
+          <!-- As-Needed Field -->
           <div class="form-group" id="groupMinInterval">
             <label for="medMinInterval">Minimum Interval Between Doses (Hours) *</label>
             <input type="number" id="medMinInterval" value="4" min="0.5" step="0.5" placeholder="e.g. 4, 6, 8, 12, 24">
             <small class="help-text">Card turns RED during this cooldown period, and GREEN when elapsed.</small>
           </div>
 
-          <!-- Scheduled Specific Field -->
+          <!-- Scheduled Field -->
           <div class="form-group hidden" id="groupScheduledSlots">
             <label>Scheduled Daily Times *</label>
             <div class="checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" name="schedSlot" value="Morning"> Morning
-              </label>
-              <label class="checkbox-label">
-                <input type="checkbox" name="schedSlot" value="Afternoon"> Afternoon
-              </label>
-              <label class="checkbox-label">
-                <input type="checkbox" name="schedSlot" value="Evening"> Evening
-              </label>
-              <label class="checkbox-label">
-                <input type="checkbox" name="schedSlot" value="Night"> Night
-              </label>
+              <label class="checkbox-label"><input type="checkbox" name="schedSlot" value="Morning"> Morning</label>
+              <label class="checkbox-label"><input type="checkbox" name="schedSlot" value="Afternoon"> Afternoon</label>
+              <label class="checkbox-label"><input type="checkbox" name="schedSlot" value="Evening"> Evening</label>
+              <label class="checkbox-label"><input type="checkbox" name="schedSlot" value="Night"> Night</label>
             </div>
           </div>
 

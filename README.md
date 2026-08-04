@@ -1,29 +1,32 @@
-# Recovery Tracker 💊❤️ (v1.2.0)
+# Recovery Tracker 💊❤️ (v2.0.0)
 
-A modern, responsive, and intuitive web application to track medication doses and interval compliance across all your devices (laptop, phone, tablet). Designed to run as a static site hosted on **GitHub Pages** with **Google Sheets** as the single source of truth.
+A comprehensive, modern web application to track medication doses, interval compliance, and **4 Medical Surgical Drains** across all your devices (laptop, phone, tablet). Designed to run as a static site hosted on **GitHub Pages** with **Google Sheets** as the single source of truth.
 
 ---
 
-## 🌟 Key Features (v1.2.0)
+## 🌟 Major Version 2.0.0 Features
 
-1. **Multi-Device 2-Way Smart Merge Sync**:
-   - **No Data Loss / No Overwriting**: Uses a 2-way conflict-free smart merge algorithm. Dose logs created on your phone and laptop combine seamlessly.
-   - **Auto-Sync on Tab Focus**: Whenever you switch to the app on your phone or laptop (`visibilitychange` / `window.onfocus`), the app automatically fetches and merges the latest doses from Google Sheets.
-   - **Background Auto-Sync**: Automatically polls every 30 seconds while the app tab is open.
+1. **🩸 Medical Drain Output Tracker (4 Drains)**:
+   - **Track 4 Surgical Drains**: Record output volume in **ml/cc** for Drain 1, Drain 2, Drain 3, and Drain 4.
+   - **Fluid Character Classification**: Log fluid appearance (*Serosanguinous*, *Serous*, *Sanguinous*, *Purulent*, *Other*).
+   - **24-Hour Total Metrics**: Live dashboard displaying daily output total per drain and aggregate output total.
+   - **Clinical History**: Dedicated Drain Output table with CSV export and printable clinical reports.
 
-2. **"As Needed" Medications (Interval-based)**:
-   - Minimum interval constraints (e.g. at least 4 hours between doses).
-   - **🛑 RED / Rose Card**: Cooldown active with live countdown timer to next eligible dose.
-   - **🟢 GREEN / Emerald Card**: Minimum interval elapsed, safe to take.
+2. **🛡️ Pull-First Cloud Safety Guard (Phone Setup Protection)**:
+   - **Zero-Overwrite Guarantee**: When connecting a new device (like a phone) for the first time, Recovery Tracker ALWAYS fetches data from Google Sheets first.
+   - **Safety Guard**: Prevents empty local state on fresh devices from wiping Google Sheets.
 
-3. **"Scheduled" Medications (Time of Day)**:
-   - Slots: **Morning**, **Afternoon**, **Evening**, **Night**.
+3. **Multi-Device 2-Way Conflict-Free Sync**:
+   - Merges dose logs and drain outputs across all your devices without overwriting.
+   - Auto-syncs on tab focus & background polling every 30 seconds.
 
-4. **Light / Dark Mode Theme Switcher**:
-   - Built-in theme toggle switch (`☀️ Light Mode` / `🌙 Dark Mode`).
+4. **"As Needed" & "Scheduled" Medications**:
+   - **🛑 RED / Rose Card**: Active minimum interval cooldown with live countdown timer.
+   - **🟢 GREEN / Emerald Card**: Interval elapsed, ready to take.
+   - Daily checklist for **Morning**, **Afternoon**, **Evening**, **Night**.
 
-5. **History Log & Doctor Reports**:
-   - Date range & search filters, **Export CSV**, and **Print Doctor Report**.
+5. **Light / Dark Mode Theme Switcher**:
+   - Dynamic theme switch (`☀️ Light Mode` / `🌙 Dark Mode`).
 
 ---
 
@@ -34,12 +37,12 @@ A modern, responsive, and intuitive web application to track medication doses an
 
 ---
 
-## 📊 Setting Up Google Sheets Integration
+## 📊 Setting Up Google Sheets Integration (v2.0.0 Script)
 
-1. Create a Google Sheet named **"Recovery Tracker DB"**.
+1. Open your Google Sheet.
 2. Click **Extensions** > **Apps Script**.
 3. Copy the full script from [`google_apps_script.gs`](google_apps_script.gs) (or from the **Google Sheets Sync** tab inside Recovery Tracker).
 4. Click **Save (Disk icon)**.
-5. Click **Deploy** > **New deployment**.
+5. Click **Deploy** > **New deployment** (or **Manage Deployments** > **Edit** > **New Version**).
 6. Set **Execute as**: `Me` and **Who has access**: `Anyone`.
-7. Click **Deploy**, click **Authorize Access**, copy the Web App URL, and paste it into **Recovery Tracker Settings** on both your phone and laptop!
+7. Click **Deploy**, click **Authorize Access**, copy the Web App URL, and paste it into **Recovery Tracker Settings**!

@@ -1,17 +1,19 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 1.2.0 - Multi-Device Smart Sync & 2-Way Merging
+ * Version 2.0.0 - Medications & 4 Medical Drains Output Tracker
  */
 
 // Global Application State
 const STATE = {
   medications: [],
   logs: [],
+  drainLogs: [],
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v1.2.0',
+  version: 'v2.0.0',
   theme: 'light',
   lastSyncedTime: null,
+  isInitialFetchDone: false,
   timerInterval: null,
   autoSyncInterval: null
 };
@@ -64,6 +66,17 @@ const SAMPLE_DATA = {
       timestamp: new Date(Date.now() - 2.5 * 3600 * 1000).toISOString(),
       timeSlot: '',
       notes: 'Logged after lunch for mild back pain.'
+    }
+  ],
+  drainLogs: [
+    {
+      id: 'drain_sample_1',
+      drainId: 'drain_1',
+      drainName: 'Drain 1',
+      volumeMl: 35,
+      fluidCharacter: 'Serosanguinous (pink/red)',
+      timestamp: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
+      notes: 'Emptied bulb, suction intact.'
     }
   ]
 };
@@ -123,6 +136,7 @@ function toggleTheme() {
 function loadLocalState() {
   const savedMeds = localStorage.getItem('rt_medications');
   const savedLogs = localStorage.getItem('rt_logs');
+  const savedDrainLogs = localStorage.getItem('rt_drain_logs');
   const savedUrl = localStorage.getItem('rt_apps_script_url');
 
   if (savedUrl) {
@@ -135,17 +149,9 @@ function loadLocalState() {
     updateSyncStatusUI('offline', 'Local Mode');
   }
 
-  if (savedMeds) {
-    STATE.medications = JSON.parse(savedMeds);
-  } else {
-    STATE.medications = [];
-  }
-
-  if (savedLogs) {
-    STATE.logs = JSON.parse(savedLogs);
-  } else {
-    STATE.logs = [];
-  }
+  STATE.medications = savedMeds ? JSON.parse(savedMeds) : [];
+  STATE.logs = savedLogs ? JSON.parse(savedLogs) : [];
+  STATE.drainLogs = savedDrainLogs ? JSON.parse(savedDrainLogs) : [];
 
   if (STATE.syncMode === 'sheets' && STATE.appsScriptUrl) {
     fetchFromGoogleSheets();
@@ -155,6 +161,8 @@ function loadLocalState() {
 function saveState(triggerRemoteSync = true) {
   localStorage.setItem('rt_medications', JSON.stringify(STATE.medications));
   localStorage.setItem('rt_logs', JSON.stringify(STATE.logs));
+  localStorage.setItem('rt_drain_logs', JSON.stringify(STATE.drainLogs));
+  
   if (STATE.appsScriptUrl) {
     localStorage.setItem('rt_apps_script_url', STATE.appsScriptUrl);
   } else {
@@ -171,23 +179,25 @@ function saveState(triggerRemoteSync = true) {
 function loadSampleData(shouldNotify = true) {
   STATE.medications = JSON.parse(JSON.stringify(SAMPLE_DATA.medications));
   STATE.logs = JSON.parse(JSON.stringify(SAMPLE_DATA.logs));
-  saveState();
+  STATE.drainLogs = JSON.parse(JSON.stringify(SAMPLE_DATA.drainLogs));
+  saveState(true);
   if (shouldNotify) {
-    showToast('Loaded sample medications and logs.');
+    showToast('Loaded sample medications, logs, and drain entries.');
   }
 }
 
 function clearAllData() {
-  if (confirm('Are you sure you want to clear all local medications and dose logs? This cannot be undone.')) {
+  if (confirm('Are you sure you want to clear all local medications, dose logs, and drain entries?')) {
     STATE.medications = [];
     STATE.logs = [];
+    STATE.drainLogs = [];
     saveState(true);
     showToast('All local data cleared.', 'info');
   }
 }
 
 /* ==========================================================================
-   MULTI-DEVICE SMART SYNC ENGINE (2-WAY SMART MERGING)
+   MULTI-DEVICE SMART SYNC ENGINE (PULL-FIRST SAFETY GUARD)
    ========================================================================== */
 
 function fetchFromGoogleSheets() {
@@ -213,26 +223,29 @@ function fetchFromGoogleSheets() {
 
   window[callbackName] = (json) => {
     cleanup();
+    STATE.isInitialFetchDone = true;
     if (json && json.status === 'success' && json.data) {
-      // Perform 2-Way Smart Merge between local state & remote Google Sheet state
       const remoteMeds = json.data.medications || [];
       const remoteLogs = json.data.logs || [];
+      const remoteDrainLogs = json.data.drainLogs || [];
 
-      const { mergedMeds, mergedLogs, changesDetected } = smartMergeData(
-        STATE.medications, STATE.logs, remoteMeds, remoteLogs
+      const { mergedMeds, mergedLogs, mergedDrainLogs, changesDetected } = smartMergeData(
+        STATE.medications, STATE.logs, STATE.drainLogs,
+        remoteMeds, remoteLogs, remoteDrainLogs
       );
 
       STATE.medications = mergedMeds;
       STATE.logs = mergedLogs;
+      STATE.drainLogs = mergedDrainLogs;
       STATE.lastSyncedTime = new Date();
 
       localStorage.setItem('rt_medications', JSON.stringify(STATE.medications));
       localStorage.setItem('rt_logs', JSON.stringify(STATE.logs));
+      localStorage.setItem('rt_drain_logs', JSON.stringify(STATE.drainLogs));
 
       updateSyncStatusUI('online', 'Google Sheets');
       renderAllViews();
 
-      // If local device had new logs or medications not yet on Google Sheet, sync back merged set
       if (changesDetected) {
         syncToGoogleSheets(false);
       }
@@ -250,13 +263,12 @@ function fetchFromGoogleSheets() {
 }
 
 /**
- * 2-Way Conflict-Free Smart Merge Algorithm
- * Combines logs and medications without overwriting either device!
+ * 3-Way Conflict-Free Smart Merge Algorithm (Meds, Dose Logs, Drain Logs)
  */
-function smartMergeData(localMeds, localLogs, remoteMeds, remoteLogs) {
+function smartMergeData(localMeds, localLogs, localDrains, remoteMeds, remoteLogs, remoteDrains) {
   let changesDetected = false;
 
-  // 1. MERGE DOSE LOGS (Union by unique ID)
+  // 1. MERGE DOSE LOGS
   const logMap = new Map();
   [...remoteLogs, ...localLogs].forEach(log => {
     if (log && log.id) {
@@ -267,12 +279,22 @@ function smartMergeData(localMeds, localLogs, remoteMeds, remoteLogs) {
   });
   const mergedLogs = Array.from(logMap.values());
   mergedLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  if (mergedLogs.length !== remoteLogs.length) changesDetected = true;
 
-  if (mergedLogs.length !== remoteLogs.length) {
-    changesDetected = true;
-  }
+  // 2. MERGE DRAIN LOGS (v2.0.0)
+  const drainMap = new Map();
+  [...remoteDrains, ...localDrains].forEach(d => {
+    if (d && d.id) {
+      if (!drainMap.has(d.id)) {
+        drainMap.set(d.id, d);
+      }
+    }
+  });
+  const mergedDrainLogs = Array.from(drainMap.values());
+  mergedDrainLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  if (mergedDrainLogs.length !== remoteDrains.length) changesDetected = true;
 
-  // 2. MERGE MEDICATIONS (By ID & updatedAt timestamp)
+  // 3. MERGE MEDICATIONS
   const medMap = new Map();
   [...remoteMeds, ...localMeds].forEach(med => {
     if (med && med.id) {
@@ -289,16 +311,20 @@ function smartMergeData(localMeds, localLogs, remoteMeds, remoteLogs) {
     }
   });
   const mergedMeds = Array.from(medMap.values());
+  if (mergedMeds.length !== remoteMeds.length) changesDetected = true;
 
-  if (mergedMeds.length !== remoteMeds.length) {
-    changesDetected = true;
-  }
-
-  return { mergedMeds, mergedLogs, changesDetected };
+  return { mergedMeds, mergedLogs, mergedDrainLogs, changesDetected };
 }
 
 function syncToGoogleSheets(fetchAfterSync = false) {
   if (!STATE.appsScriptUrl) return;
+
+  // SAFETY GUARD: Do not push empty state if initial fetch has not completed yet
+  if (!STATE.isInitialFetchDone && STATE.medications.length === 0 && STATE.logs.length === 0 && STATE.drainLogs.length === 0) {
+    console.log('Safety Guard triggered: Skipping remote overwrite on initial setup.');
+    fetchFromGoogleSheets();
+    return;
+  }
 
   fetch(STATE.appsScriptUrl, {
     method: 'POST',
@@ -306,7 +332,8 @@ function syncToGoogleSheets(fetchAfterSync = false) {
     body: JSON.stringify({
       action: 'save_all',
       medications: STATE.medications,
-      logs: STATE.logs
+      logs: STATE.logs,
+      drainLogs: STATE.drainLogs
     }),
     mode: 'no-cors'
   }).then(() => {
@@ -314,10 +341,11 @@ function syncToGoogleSheets(fetchAfterSync = false) {
     updateSyncStatusUI('online', 'Google Sheets');
     if (fetchAfterSync) fetchFromGoogleSheets();
   }).catch((err) => {
-    console.warn('POST failed, attempting GET/JSONP save fallback...', err);
+    console.warn('POST failed, attempting JSONP save fallback...', err);
     const payloadStr = encodeURIComponent(JSON.stringify({
       medications: STATE.medications,
-      logs: STATE.logs
+      logs: STATE.logs,
+      drainLogs: STATE.drainLogs
     }));
     
     const callbackName = 'rt_jsonp_save_' + Math.floor(Math.random() * 1000000);
@@ -343,7 +371,6 @@ function syncToGoogleSheets(fetchAfterSync = false) {
 }
 
 function startAutoSync() {
-  // 1. Auto-sync on window/tab focus (when switching to app on phone or laptop)
   window.addEventListener('focus', () => {
     if (STATE.syncMode === 'sheets' && STATE.appsScriptUrl) {
       fetchFromGoogleSheets();
@@ -356,7 +383,6 @@ function startAutoSync() {
     }
   });
 
-  // 2. Periodic background auto-sync every 30 seconds
   if (STATE.autoSyncInterval) clearInterval(STATE.autoSyncInterval);
   STATE.autoSyncInterval = setInterval(() => {
     if (STATE.syncMode === 'sheets' && STATE.appsScriptUrl) {
@@ -383,6 +409,7 @@ function renderAllViews() {
   renderAsNeededMeds();
   renderScheduledMeds();
   renderDailySchedule();
+  renderDrainViews();
   renderLogsTable();
 }
 
@@ -401,15 +428,17 @@ function renderOverviewStats() {
   });
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const dosesToday = STATE.logs.filter(l => l.timestamp && l.timestamp.startsWith(todayStr)).length;
+  const drainTotalToday = STATE.drainLogs
+    .filter(d => d.timestamp && d.timestamp.startsWith(todayStr))
+    .reduce((sum, d) => sum + (Number(d.volumeMl) || 0), 0);
 
   document.getElementById('statReadyCount').textContent = readyCount;
   document.getElementById('statCooldownCount').textContent = cooldownCount;
   document.getElementById('statScheduledCount').textContent = scheduled.length;
-  document.getElementById('statDosesToday').textContent = dosesToday;
+  document.getElementById('statDrainTotalToday').textContent = `${drainTotalToday} ml`;
 }
 
-// 2. AS-NEEDED MEDICATIONS GRID (RED / GREEN CARDS)
+// 2. AS-NEEDED MEDICATIONS GRID
 function renderAsNeededMeds() {
   const container = document.getElementById('asNeededGrid');
   if (!container) return;
@@ -591,7 +620,69 @@ function renderDailySchedule() {
   }
 }
 
-// 5. HISTORY LOGS TABLE & FILTERS
+// 5. MEDICAL DRAINS TRACKER VIEWS (v2.0.0)
+function renderDrainViews() {
+  const drainIds = ['drain_1', 'drain_2', 'drain_3', 'drain_4'];
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  drainIds.forEach((dId, idx) => {
+    const num = idx + 1;
+    const dLogs = STATE.drainLogs.filter(d => d.drainId === dId);
+    dLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    const todayTotal = dLogs
+      .filter(d => d.timestamp && d.timestamp.startsWith(todayStr))
+      .reduce((sum, d) => sum + (Number(d.volumeMl) || 0), 0);
+
+    const lastLog = dLogs[0];
+
+    const todayEl = document.getElementById(`d${num}TodayTotal`);
+    const timeEl = document.getElementById(`d${num}LastTime`);
+    const charEl = document.getElementById(`d${num}LastChar`);
+
+    if (todayEl) todayEl.textContent = todayTotal;
+    if (timeEl) timeEl.textContent = lastLog ? formatRelativeTime(lastLog.timestamp) : 'Never';
+    if (charEl) charEl.textContent = lastLog ? lastLog.fluidCharacter : 'N/A';
+  });
+
+  // Render Drain Table
+  const tbody = document.getElementById('drainTableBody');
+  const printTbody = document.getElementById('printDrainTableBody');
+  const emptyState = document.getElementById('emptyDrainState');
+
+  const sortedDrains = [...STATE.drainLogs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  if (!tbody) return;
+
+  if (sortedDrains.length === 0) {
+    tbody.innerHTML = '';
+    if (printTbody) printTbody.innerHTML = '<tr><td colspan="5">No drain entries.</td></tr>';
+    if (emptyState) emptyState.classList.remove('hidden');
+    return;
+  }
+
+  if (emptyState) emptyState.classList.add('hidden');
+
+  const rowsHtml = sortedDrains.map(d => `
+    <tr>
+      <td><strong>${formatFullDate(d.timestamp)}</strong></td>
+      <td><span class="badge-version">${escapeHtml(d.drainName || d.drainId)}</span></td>
+      <td><strong>${d.volumeMl} ml</strong></td>
+      <td>${escapeHtml(d.fluidCharacter)}</td>
+      <td>${d.notes ? escapeHtml(d.notes) : '<em>No notes</em>'}</td>
+      <td class="no-print">
+        <button class="btn btn-sm btn-outline" onclick="deleteDrainLog('${d.id}')" title="Delete entry">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+
+  tbody.innerHTML = rowsHtml;
+  if (printTbody) printTbody.innerHTML = rowsHtml;
+}
+
+// 6. HISTORY LOGS TABLE & FILTERS
 function renderLogsTable() {
   const tbody = document.getElementById('logsTableBody');
   const emptyState = document.getElementById('emptyLogsState');
@@ -608,7 +699,8 @@ function renderLogsTable() {
                           (log.notes && log.notes.toLowerCase().includes(searchQuery));
     if (!matchesSearch) return false;
 
-    if (typeFilter !== 'all' && log.type !== typeFilter) return false;
+    if (typeFilter !== 'all' && typeFilter !== 'drains' && log.type !== typeFilter) return false;
+    if (typeFilter === 'drains') return false;
 
     const logTime = new Date(log.timestamp).getTime();
     if (dateFilter === 'today') {
@@ -627,11 +719,11 @@ function renderLogsTable() {
 
   if (filteredLogs.length === 0) {
     tbody.innerHTML = '';
-    emptyState.classList.remove('hidden');
+    if (emptyState) emptyState.classList.remove('hidden');
     return;
   }
 
-  emptyState.classList.add('hidden');
+  if (emptyState) emptyState.classList.add('hidden');
   tbody.innerHTML = filteredLogs.map(log => {
     const dateFormatted = formatFullDate(log.timestamp);
     const typeBadge = log.type === 'as-needed' 
@@ -748,6 +840,7 @@ function setupEventListeners() {
   });
 
   document.getElementById('btnAddMedication')?.addEventListener('click', () => openAddMedicationModal());
+  document.getElementById('btnQuickLogDrain')?.addEventListener('click', () => openLogDrainModal());
   document.getElementById('btnInfoModal')?.addEventListener('click', () => openInfoModal());
   document.getElementById('syncStatusPill')?.addEventListener('click', () => {
     document.querySelector('[data-tab="tab-settings"]')?.click();
@@ -758,9 +851,10 @@ function setupEventListeners() {
     if (urlInput) {
       STATE.appsScriptUrl = urlInput;
       STATE.syncMode = 'sheets';
-      saveState();
+      localStorage.setItem('rt_apps_script_url', urlInput);
+      // PULL FIRST Policy: Always fetch from Google Sheets first!
       fetchFromGoogleSheets();
-      showToast('Saved Web App URL and initiating 2-way sync!');
+      showToast('Saved Web App URL! Fetching cloud data...');
     } else {
       STATE.appsScriptUrl = '';
       STATE.syncMode = 'local';
@@ -797,6 +891,7 @@ function setupEventListeners() {
 
   document.getElementById('formMedication')?.addEventListener('submit', (e) => handleSaveMedication(e));
   document.getElementById('formLogDose')?.addEventListener('submit', (e) => handleSaveLogDose(e));
+  document.getElementById('formDrainOutput')?.addEventListener('submit', (e) => handleSaveDrainOutput(e));
 
   document.getElementById('btnCloseInfoModal')?.addEventListener('click', () => closeInfoModal());
   document.getElementById('btnDismissInfoModal')?.addEventListener('click', () => closeInfoModal());
@@ -804,6 +899,8 @@ function setupEventListeners() {
   document.getElementById('btnCancelMedModal')?.addEventListener('click', () => closeMedicationModal());
   document.getElementById('btnCloseLogDose')?.addEventListener('click', () => closeLogDoseModal());
   document.getElementById('btnCancelLogDose')?.addEventListener('click', () => closeLogDoseModal());
+  document.getElementById('btnCloseDrainModal')?.addEventListener('click', () => closeLogDrainModal());
+  document.getElementById('btnCancelDrainModal')?.addEventListener('click', () => closeLogDrainModal());
 
   document.getElementById('medType')?.addEventListener('change', (e) => {
     const val = e.target.value;
@@ -842,6 +939,67 @@ function closeInfoModal() {
   document.getElementById('modalInfo').classList.add('hidden');
 }
 
+// LOG DRAIN OUTPUT MODAL (v2.0.0)
+function openLogDrainModal(defaultDrain = 'drain_1') {
+  document.getElementById('drainSelect').value = defaultDrain;
+  document.getElementById('drainVolume').value = '';
+  document.getElementById('drainCharacter').value = 'Serosanguinous (pink/red)';
+  document.getElementById('drainNotes').value = '';
+
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('drainTimestamp').value = now.toISOString().slice(0, 16);
+
+  document.getElementById('modalDrainOutput').classList.remove('hidden');
+}
+
+function closeLogDrainModal() {
+  document.getElementById('modalDrainOutput').classList.add('hidden');
+}
+
+function handleSaveDrainOutput(e) {
+  e.preventDefault();
+
+  const drainId = document.getElementById('drainSelect').value;
+  const drainNames = {
+    'drain_1': 'Drain 1',
+    'drain_2': 'Drain 2',
+    'drain_3': 'Drain 3',
+    'drain_4': 'Drain 4'
+  };
+
+  const volumeMl = parseFloat(document.getElementById('drainVolume').value) || 0;
+  const fluidCharacter = document.getElementById('drainCharacter').value;
+  const timestampLocal = document.getElementById('drainTimestamp').value;
+  const notes = document.getElementById('drainNotes').value.trim();
+
+  const timestampIso = new Date(timestampLocal).toISOString();
+
+  const newDrainLog = {
+    id: `drainlog_${Date.now()}`,
+    drainId,
+    drainName: drainNames[drainId] || 'Drain',
+    volumeMl,
+    fluidCharacter,
+    timestamp: timestampIso,
+    notes
+  };
+
+  STATE.drainLogs.push(newDrainLog);
+  saveState(true);
+  closeLogDrainModal();
+  showToast(`Recorded ${volumeMl} ml output for ${drainNames[drainId]}!`);
+}
+
+function deleteDrainLog(id) {
+  if (confirm('Delete this drain log entry?')) {
+    STATE.drainLogs = STATE.drainLogs.filter(d => d.id !== id);
+    saveState(true);
+    showToast('Drain log entry deleted.', 'info');
+  }
+}
+
+// MEDICATION MODAL
 function openAddMedicationModal(defaultType = 'as-needed') {
   document.getElementById('medModalTitle').innerHTML = '<i class="fa-solid fa-pills color-primary"></i> Add Medication';
   document.getElementById('editMedId').value = '';
@@ -923,7 +1081,7 @@ function handleSaveMedication(e) {
     showToast(`Added new medication: ${name}`);
   }
 
-  saveState();
+  saveState(true);
   closeMedicationModal();
 }
 
@@ -933,7 +1091,7 @@ function deleteMedication(id) {
 
   if (confirm(`Are you sure you want to delete ${med.name}?`)) {
     STATE.medications = STATE.medications.filter(m => m.id !== id);
-    saveState();
+    saveState(true);
     showToast(`Deleted ${med.name}`, 'info');
   }
 }
@@ -990,7 +1148,7 @@ function handleSaveLogDose(e) {
   };
 
   STATE.logs.push(newLog);
-  saveState();
+  saveState(true);
   closeLogDoseModal();
   showToast(`Logged dose for ${med.name}!`);
 }
@@ -998,7 +1156,7 @@ function handleSaveLogDose(e) {
 function deleteLogEntry(id) {
   if (confirm('Delete this log entry?')) {
     STATE.logs = STATE.logs.filter(l => l.id !== id);
-    saveState();
+    saveState(true);
     showToast('Log entry deleted.', 'info');
   }
 }
@@ -1008,13 +1166,15 @@ function deleteLogEntry(id) {
    ========================================================================== */
 
 function exportLogsToCSV() {
-  if (STATE.logs.length === 0) {
+  if (STATE.logs.length === 0 && STATE.drainLogs.length === 0) {
     showToast('No logs available to export.', 'error');
     return;
   }
 
-  const headers = ['Log ID', 'Timestamp (ISO)', 'Date & Time', 'Medication Name', 'Type', 'Quantity', 'Unit', 'Time Slot', 'Notes'];
-  const rows = STATE.logs.map(log => [
+  const medHeaders = ['Record Type', 'Log ID', 'Timestamp (ISO)', 'Date & Time', 'Name / Drain', 'Type / Character', 'Quantity / Volume', 'Unit', 'Notes'];
+  
+  const medRows = STATE.logs.map(log => [
+    'MedicationDose',
     log.id,
     log.timestamp,
     `"${formatFullDate(log.timestamp)}"`,
@@ -1022,20 +1182,31 @@ function exportLogsToCSV() {
     log.type,
     log.quantity,
     log.unit,
-    log.timeSlot || '',
     `"${(log.notes || '').replace(/"/g, '""')}"`
   ]);
 
-  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const drainRows = STATE.drainLogs.map(d => [
+    'MedicalDrainOutput',
+    d.id,
+    d.timestamp,
+    `"${formatFullDate(d.timestamp)}"`,
+    `"${d.drainName}"`,
+    `"${d.fluidCharacter}"`,
+    d.volumeMl,
+    'ml',
+    `"${(d.notes || '').replace(/"/g, '""')}"`
+  ]);
+
+  const csvContent = 'data:text/csv;charset=utf-8,' + [medHeaders.join(','), ...medRows.map(r => r.join(',')), ...drainRows.map(r => r.join(','))].join('\n');
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement('a');
   link.setAttribute('href', encodedUri);
-  link.setAttribute('download', `recovery_tracker_logs_${new Date().toISOString().split('T')[0]}.csv`);
+  link.setAttribute('download', `recovery_tracker_report_${new Date().toISOString().split('T')[0]}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 
-  showToast('CSV Report Downloaded!');
+  showToast('Comprehensive CSV Report Downloaded!');
 }
 
 /* ==========================================================================
@@ -1109,17 +1280,17 @@ function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend (v1.2.0 - Multi-Device Smart Sync)
+ * RECOVERY TRACKER - Google Apps Script Backend (v2.0.0 - Medications & 4 Medical Drains Tracker)
  * 
  * Instructions:
  * 1. Open your Google Sheet.
  * 2. Go to Extensions > Apps Script.
- * 3. Replace all existing code in Code.gs with this exact file.
+ * 3. Replace all code in Code.gs with this exact file.
  * 4. Click Save (disk icon).
  * 5. Click Deploy > New deployment (or Manage Deployments > Edit > New Version).
  * 6. Set 'Execute as': Me
  * 7. Set 'Who has access': Anyone  <-- CRITICAL!
- * 8. Click Deploy, copy the Web App URL, and paste into Recovery Tracker Settings.
+ * 8. Click Deploy, click "Authorize access", copy the Web App URL, and paste into Recovery Tracker Settings.
  */
 
 function getSpreadsheet() {
@@ -1143,6 +1314,13 @@ function setupSheets() {
     logSheet.appendRow(['id', 'medicationId', 'medicationName', 'type', 'quantity', 'unit', 'timestamp', 'timeSlot', 'notes']);
     logSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#2B6CB0').setFontColor('#FFFFFF');
   }
+
+  let drainSheet = ss.getSheetByName('DrainLogs');
+  if (!drainSheet) {
+    drainSheet = ss.insertSheet('DrainLogs');
+    drainSheet.appendRow(['id', 'drainId', 'drainName', 'volumeMl', 'fluidCharacter', 'timestamp', 'notes']);
+    drainSheet.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#9B2C2C').setFontColor('#FFFFFF');
+  }
 }
 
 function doGet(e) {
@@ -1154,7 +1332,7 @@ function doGet(e) {
 
     if (action === 'save_all' && params.data) {
       const dataObj = JSON.parse(decodeURIComponent(params.data));
-      saveAllData(dataObj.medications || [], dataObj.logs || []);
+      saveAllData(dataObj.medications || [], dataObj.logs || [], dataObj.drainLogs || []);
       return respond({ status: 'success', message: 'Data saved successfully' }, callback);
     }
 
@@ -1163,9 +1341,11 @@ function doGet(e) {
 
     const medSheet = ss.getSheetByName('Medications');
     const logSheet = ss.getSheetByName('DoseLogs');
+    const drainSheet = ss.getSheetByName('DrainLogs');
 
     const medData = getSheetObjects(medSheet);
     const logData = getSheetObjects(logSheet);
+    const drainData = getSheetObjects(drainSheet);
 
     const medications = medData.map(m => ({
       id: String(m.id || ''),
@@ -1191,7 +1371,17 @@ function doGet(e) {
       notes: String(l.notes || '')
     })).filter(l => l.id);
 
-    return respond({ status: 'success', data: { medications, logs } }, callback);
+    const drainLogs = drainData.map(d => ({
+      id: String(d.id || ''),
+      drainId: String(d.drainId || ''),
+      drainName: String(d.drainName || ''),
+      volumeMl: Number(d.volumeMl || 0),
+      fluidCharacter: String(d.fluidCharacter || ''),
+      timestamp: String(d.timestamp || ''),
+      notes: String(d.notes || '')
+    })).filter(d => d.id);
+
+    return respond({ status: 'success', data: { medications, logs, drainLogs } }, callback);
   } catch (err) {
     const callback = (e && e.parameter) ? e.parameter.callback : null;
     return respond({ status: 'error', message: err.toString() }, callback);
@@ -1209,7 +1399,7 @@ function doPost(e) {
     const action = postData.action || 'save_all';
 
     if (action === 'save_all') {
-      saveAllData(postData.medications || [], postData.logs || []);
+      saveAllData(postData.medications || [], postData.logs || [], postData.drainLogs || []);
       return respond({ status: 'success', message: 'All data synchronized successfully.' }, null);
     }
 
@@ -1219,7 +1409,7 @@ function doPost(e) {
   }
 }
 
-function saveAllData(medications, logs) {
+function saveAllData(medications, logs, drainLogs) {
   const ss = getSpreadsheet();
   if (!ss) return;
 
@@ -1258,6 +1448,23 @@ function saveAllData(medications, logs) {
       l.timestamp,
       l.timeSlot || '',
       l.notes || ''
+    ]);
+  });
+
+  const drainSheet = ss.getSheetByName('DrainLogs');
+  drainSheet.clearContents();
+  drainSheet.appendRow(['id', 'drainId', 'drainName', 'volumeMl', 'fluidCharacter', 'timestamp', 'notes']);
+  drainSheet.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#9B2C2C').setFontColor('#FFFFFF');
+
+  drainLogs.forEach(d => {
+    drainSheet.appendRow([
+      d.id,
+      d.drainId,
+      d.drainName,
+      d.volumeMl || 0,
+      d.fluidCharacter || '',
+      d.timestamp || '',
+      d.notes || ''
     ]);
   });
 }
