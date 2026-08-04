@@ -1,10 +1,10 @@
-# Recovery Tracker 💊❤️ (v1.1.3)
+# Recovery Tracker 💊❤️ (v1.1.4)
 
 A modern, responsive, and intuitive web application to track medication doses and interval compliance. Designed to run as a static site hosted on **GitHub Pages** with optional seamless **Google Sheets backend integration** (via Google Apps Script).
 
 ---
 
-## 🌟 Key Features (v1.1.3)
+## 🌟 Key Features (v1.1.4)
 
 1. **"As Needed" Medications (Interval-based)**:
    - Minimum interval constraints (e.g. at least 4 hours between doses).
@@ -23,11 +23,12 @@ A modern, responsive, and intuitive web application to track medication doses an
 4. **Blank Initial State**:
    - Opens clean & blank by default without placeholder test data.
 
-5. **Pure JSONP Sync Engine (CORS-Free Google Sheets Backend)**:
-   - Uses JSONP dynamic script injection to read and write to Google Sheets smoothly without CORS blocks on static hosts like GitHub Pages.
+5. **Safe Spreadsheet Resolver & JSONP Engine**:
+   - Works for both bound Google Sheets AND standalone Apps Scripts seamlessly.
+   - Uses JSONP dynamic script injection to read and write to Google Sheets smoothly without CORS blocks.
 
 6. **Information & Help Modal**:
-   - Usage guide, version tracking (`v1.1.3`), and full release changelog.
+   - Usage guide, version tracking (`v1.1.4`), and full release changelog.
 
 7. **History Log & Doctor Reports**:
    - Full timeline log of all dose instances.
@@ -45,7 +46,7 @@ A modern, responsive, and intuitive web application to track medication doses an
 
 ## 📊 Setting Up Google Sheets Integration
 
-1. Create a blank Google Sheet named **"Recovery Tracker DB"**.
+1. Create a blank Google Sheet named **"Recovery Tracker DB"** (or use Apps Script).
 2. Click **Extensions** > **Apps Script**.
 3. Copy the full script from [`google_apps_script.gs`](google_apps_script.gs) (or from the **Google Sheets Sync** tab inside Recovery Tracker).
 4. Click **Save (Disk icon)**.

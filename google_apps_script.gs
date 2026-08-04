@@ -1,40 +1,56 @@
 /**
- * RECOVERY TRACKER - Google Apps Script Backend (v1.1.3 - Full JSONP & CORS Enabled)
+ * RECOVERY TRACKER - Google Apps Script Backend (v1.1.4 - Safe Spreadsheet Resolver & JSONP)
  * 
  * Instructions:
- * 1. Open your Google Sheet
- * 2. Go to Extensions > Apps Script
- * 3. Replace all existing code in Code.gs with this exact file.
- * 4. Click Save (disk icon).
- * 5. Click Deploy > New deployment (or Manage Deployments > Edit > New Version).
- * 6. Set 'Execute as': Me
- * 7. Set 'Who has access': Anyone  <-- CRITICAL! Must be "Anyone".
- * 8. Click Deploy, copy the Web App URL, and paste it into Recovery Tracker Settings.
+ * 1. Open Google Sheets (or Apps Script).
+ * 2. Replace all existing code in Code.gs with this exact file.
+ * 3. Click Save (disk icon).
+ * 4. Click Deploy > New deployment.
+ * 5. Set 'Execute as': Me
+ * 6. Set 'Who has access': Anyone  <-- CRITICAL!
+ * 7. Click Deploy, copy the resulting Web App URL, and paste into Recovery Tracker Settings.
  */
 
-const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
+// Safe Spreadsheet Resolver (Works for both bound sheets and standalone scripts)
+function getSpreadsheet() {
+  let ss = null;
+  try {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+  } catch (e) {}
+
+  if (!ss) {
+    const files = DriveApp.getFilesByName("Recovery Tracker DB");
+    if (files.hasNext()) {
+      ss = SpreadsheetApp.open(files.next());
+    } else {
+      ss = SpreadsheetApp.create("Recovery Tracker DB");
+    }
+  }
+  return ss;
+}
 
 // Ensure sheet tabs exist with correct headers
 function setupSheets() {
-  let medSheet = SPREADSHEET.getSheetByName('Medications');
+  const ss = getSpreadsheet();
+  let medSheet = ss.getSheetByName('Medications');
   if (!medSheet) {
-    medSheet = SPREADSHEET.insertSheet('Medications');
+    medSheet = ss.insertSheet('Medications');
     medSheet.appendRow(['id', 'name', 'type', 'quantity', 'unit', 'minIntervalHours', 'scheduledSlots', 'notes', 'updatedAt']);
     medSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#4A5568').setFontColor('#FFFFFF');
   }
 
-  let logSheet = SPREADSHEET.getSheetByName('DoseLogs');
+  let logSheet = ss.getSheetByName('DoseLogs');
   if (!logSheet) {
-    logSheet = SPREADSHEET.insertSheet('DoseLogs');
+    logSheet = ss.insertSheet('DoseLogs');
     logSheet.appendRow(['id', 'medicationId', 'medicationName', 'type', 'quantity', 'unit', 'timestamp', 'timeSlot', 'notes']);
     logSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#2B6CB0').setFontColor('#FFFFFF');
   }
 }
 
-// GET Endpoint - Handles both FETCH & JSONP for GET and SAVE actions
+// GET Endpoint - Handles FETCH & JSONP for GET and SAVE actions
 function doGet(e) {
-  setupSheets();
   try {
+    setupSheets();
     const params = (e && e.parameter) ? e.parameter : {};
     const action = params.action || 'get_all';
     const callback = params.callback;
@@ -43,12 +59,13 @@ function doGet(e) {
     if (action === 'save_all' && params.data) {
       const dataObj = JSON.parse(decodeURIComponent(params.data));
       saveAllData(dataObj.medications || [], dataObj.logs || []);
-      return respond({ status: 'success', message: 'Data saved successfully via JSONP' }, callback);
+      return respond({ status: 'success', message: 'Data saved successfully' }, callback);
     }
 
     // Default Action: Fetch all data
-    const medSheet = SPREADSHEET.getSheetByName('Medications');
-    const logSheet = SPREADSHEET.getSheetByName('DoseLogs');
+    const ss = getSpreadsheet();
+    const medSheet = ss.getSheetByName('Medications');
+    const logSheet = ss.getSheetByName('DoseLogs');
 
     const medData = getSheetObjects(medSheet);
     const logData = getSheetObjects(logSheet);
@@ -85,8 +102,8 @@ function doGet(e) {
 
 // POST Endpoint - Handles standard POST requests
 function doPost(e) {
-  setupSheets();
   try {
+    setupSheets();
     let postData = {};
     if (e && e.postData && e.postData.contents) {
       postData = JSON.parse(e.postData.contents);
@@ -107,7 +124,8 @@ function doPost(e) {
 
 // Helper to save all data to sheets
 function saveAllData(medications, logs) {
-  const medSheet = SPREADSHEET.getSheetByName('Medications');
+  const ss = getSpreadsheet();
+  const medSheet = ss.getSheetByName('Medications');
   medSheet.clearContents();
   medSheet.appendRow(['id', 'name', 'type', 'quantity', 'unit', 'minIntervalHours', 'scheduledSlots', 'notes', 'updatedAt']);
   medSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#4A5568').setFontColor('#FFFFFF');
@@ -126,7 +144,7 @@ function saveAllData(medications, logs) {
     ]);
   });
 
-  const logSheet = SPREADSHEET.getSheetByName('DoseLogs');
+  const logSheet = ss.getSheetByName('DoseLogs');
   logSheet.clearContents();
   logSheet.appendRow(['id', 'medicationId', 'medicationName', 'type', 'quantity', 'unit', 'timestamp', 'timeSlot', 'notes']);
   logSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#2B6CB0').setFontColor('#FFFFFF');
@@ -165,7 +183,7 @@ function getSheetObjects(sheet) {
   return objects;
 }
 
-// Response Formatter (Supports both standard JSON and JSONP callbacks)
+// Response Formatter
 function respond(payload, callback) {
   if (callback) {
     const jsonpOutput = callback + '(' + JSON.stringify(payload) + ')';

@@ -21,7 +21,7 @@
         </div>
         <div class="brand-text">
           <h1>Recovery Tracker</h1>
-          <span class="brand-tagline">Smart Medication & Dose Interval Tracker <span class="badge-version" id="versionBadge">v1.1.3</span></span>
+          <span class="brand-tagline">Smart Medication & Dose Interval Tracker <span class="badge-version" id="versionBadge">v1.1.4</span></span>
         </div>
       </div>
 
@@ -295,7 +295,7 @@
                 <li><strong>Execute as:</strong> <code>Me</code></li>
                 <li><strong>Who has access:</strong> <code>Anyone</code> <em>(DO NOT select "Only me" or "Anyone with Google account")</em></li>
               </ul>
-              <small>After updating Code.gs, click <strong>Deploy &gt; New Deployment</strong> (or <strong>Manage Deployments &gt; Edit &gt; New Version</strong>) to apply changes.</small>
+              <small>After updating Code.gs, click <strong>Deploy &gt; New Deployment</strong> to generate a fresh, working Web App URL!</small>
             </div>
           </div>
 
@@ -305,7 +305,7 @@
               <li>Open Google Sheets (<a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a>) and create a blank sheet named <strong>"Recovery Tracker DB"</strong>.</li>
               <li>Click <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
               <li>Delete any existing code in the editor.</li>
-              <li>Copy and paste the full Apps Script v1.1.3 code below into the editor:</li>
+              <li>Copy and paste the full Apps Script v1.1.4 code below into the editor:</li>
             </ol>
 
             <div class="code-snippet-box">
@@ -315,7 +315,7 @@
 
             <ol class="setup-steps" start="5">
               <li>Click the <strong>Save (Floppy Disk)</strong> icon.</li>
-              <li>Click <strong>Deploy</strong> &gt; <strong>New deployment</strong> (or <strong>Manage deployments &gt; Edit &gt; New Version</strong>).</li>
+              <li>Click <strong>Deploy</strong> &gt; <strong>New deployment</strong>.</li>
               <li>Set <strong>Execute as</strong>: <em>"Me"</em>.</li>
               <li>Set <strong>Who has access</strong>: <em>"Anyone"</em>.</li>
               <li>Click <strong>Deploy</strong>, authorize permissions, and copy the resulting <strong>Web App URL</strong>.</li>
@@ -350,14 +350,14 @@
       </div>
       <div class="modal-body">
         <div class="info-hero">
-          <div class="info-version-pill">Version 1.1.3</div>
+          <div class="info-version-pill">Version 1.1.4</div>
           <h3>Your Personal Medical & Dose Compliance Companion</h3>
           <p>Recovery Tracker is designed to make managing medications effortless, safe, and transparent.</p>
         </div>
 
         <div class="info-tabs">
           <button class="info-tab-btn active" data-infotab="info-guide">How to Use</button>
-          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v1.1.3)</button>
+          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v1.1.4)</button>
           <button class="info-tab-btn" data-infotab="info-about">Technical Info</button>
         </div>
 
@@ -397,12 +397,20 @@
         <div class="info-tab-content" id="info-changelog">
           <div class="changelog-timeline">
             <div class="changelog-item">
-              <span class="changelog-version">v1.1.3 (Current Release)</span>
+              <span class="changelog-version">v1.1.4 (Current Release)</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>📜 Updated in-app Apps Script display code to render the full, complete v1.1.3 backend script for 1-click copying.</li>
-                <li>🔄 Activated robust JSONP sync engine for zero CORS errors with Google Sheets.</li>
-                <li>🔖 Synchronized version badges (`v1.1.3`) and in-app changelog across all components.</li>
+                <li>🛡️ Added safe lazy spreadsheet resolver to `google_apps_script.gs` supporting both bound and standalone scripts.</li>
+                <li>🔧 Resolved 404 Web App URL redirect errors by diagnosing Google Apps Script new deployment requirements.</li>
+                <li>🔖 Synchronized version badges (`v1.1.4`) and in-app changelog.</li>
+              </ul>
+            </div>
+            <div class="changelog-item" style="margin-top: 1rem;">
+              <span class="changelog-version">v1.1.3</span>
+              <span class="changelog-date">August 2026</span>
+              <ul>
+                <li>📜 Rendered full 100% untruncated Apps Script code in the Google Sheets Sync tab.</li>
+                <li>🔄 Activated robust JSONP sync engine for zero CORS errors.</li>
               </ul>
             </div>
             <div class="changelog-item" style="margin-top: 1rem;">
@@ -410,17 +418,7 @@
               <span class="changelog-date">August 2026</span>
               <ul>
                 <li>☀️ Added <strong>Light Mode</strong> / Dark Mode toggle switch in header.</li>
-                <li>🧹 Removed test sample data by default — app now opens clean &amp; blank when no data exists.</li>
-                <li>🌐 Google Apps Script JSONP fallback for CORS resolution.</li>
-              </ul>
-            </div>
-            <div class="changelog-item" style="margin-top: 1rem;">
-              <span class="changelog-version">v1.0.0 (Initial Release)</span>
-              <span class="changelog-date">August 2026</span>
-              <ul>
-                <li>✨ Initial launch of Recovery Tracker web application.</li>
-                <li>🛑 Dynamic Red/Green status indicator cards for As-Needed interval tracking.</li>
-                <li>📅 Morning, Afternoon, Evening, Night daily schedule tracking.</li>
+                <li>🧹 Blank initial state when opening the app without existing data.</li>
               </ul>
             </div>
           </div>

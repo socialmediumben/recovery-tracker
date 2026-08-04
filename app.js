@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 1.1.3
+ * Version 1.1.4
  */
 
 // Global Application State
@@ -9,7 +9,7 @@ const STATE = {
   logs: [],
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v1.1.3',
+  version: 'v1.1.4',
   theme: 'light',
   timerInterval: null
 };
@@ -181,7 +181,7 @@ function clearAllData() {
 }
 
 /* ==========================================================================
-   GOOGLE SHEETS SYNC CONTROLLER (100% RELIABLE JSONP ENGINE)
+   GOOGLE SHEETS SYNC CONTROLLER (JSONP ENGINE)
    ========================================================================== */
 
 function fetchFromGoogleSheets() {
@@ -197,7 +197,7 @@ function fetchFromGoogleSheets() {
   const timeoutId = setTimeout(() => {
     cleanup();
     updateSyncStatusUI('error', 'Sheets Sync Timeout');
-    showToast('Connection to Google Sheets timed out. Please verify your Web App URL and set access to "Anyone".', 'error');
+    showToast('Connection timed out. Check your Web App URL or create a New Deployment in Google Apps Script.', 'error');
   }, 10000);
 
   function cleanup() {
@@ -224,8 +224,8 @@ function fetchFromGoogleSheets() {
 
   script.onerror = () => {
     cleanup();
-    updateSyncStatusUI('error', 'Sheets CORS Error');
-    showToast('CORS Error: Please update Code.gs in Google Sheets and re-deploy with "Who has access: Anyone".', 'error');
+    updateSyncStatusUI('error', 'URL Error / 404');
+    showToast('404 or URL Error: Ensure you clicked "Deploy > New deployment" in Google Apps Script and copied the fresh URL.', 'error');
   };
 
   document.body.appendChild(script);
@@ -1015,42 +1015,56 @@ function showToast(message, type = 'success') {
 function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
-  // Renders the FULL 100% exact source code of google_apps_script.gs v1.1.3
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend (v1.1.3 - Full JSONP & CORS Enabled)
+ * RECOVERY TRACKER - Google Apps Script Backend (v1.1.4 - Safe Spreadsheet Resolver & JSONP)
  * 
  * Instructions:
- * 1. Open your Google Sheet
- * 2. Go to Extensions > Apps Script
- * 3. Replace all existing code in Code.gs with this exact file.
- * 4. Click Save (disk icon).
- * 5. Click Deploy > New deployment (or Manage Deployments > Edit > New Version).
- * 6. Set 'Execute as': Me
- * 7. Set 'Who has access': Anyone  <-- CRITICAL! Must be "Anyone".
- * 8. Click Deploy, copy the Web App URL, and paste it into Recovery Tracker Settings.
+ * 1. Open Google Sheets (or Apps Script).
+ * 2. Replace all existing code in Code.gs with this exact file.
+ * 3. Click Save (disk icon).
+ * 4. Click Deploy > New deployment.
+ * 5. Set 'Execute as': Me
+ * 6. Set 'Who has access': Anyone  <-- CRITICAL!
+ * 7. Click Deploy, copy the resulting Web App URL, and paste into Recovery Tracker Settings.
  */
 
-const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
+function getSpreadsheet() {
+  let ss = null;
+  try {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+  } catch (e) {}
+
+  if (!ss) {
+    const files = DriveApp.getFilesByName("Recovery Tracker DB");
+    if (files.hasNext()) {
+      ss = SpreadsheetApp.open(files.next());
+    } else {
+      ss = SpreadsheetApp.create("Recovery Tracker DB");
+    }
+  }
+  return ss;
+}
 
 function setupSheets() {
-  let medSheet = SPREADSHEET.getSheetByName('Medications');
+  const ss = getSpreadsheet();
+  let medSheet = ss.getSheetByName('Medications');
   if (!medSheet) {
-    medSheet = SPREADSHEET.insertSheet('Medications');
+    medSheet = ss.insertSheet('Medications');
     medSheet.appendRow(['id', 'name', 'type', 'quantity', 'unit', 'minIntervalHours', 'scheduledSlots', 'notes', 'updatedAt']);
     medSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#4A5568').setFontColor('#FFFFFF');
   }
 
-  let logSheet = SPREADSHEET.getSheetByName('DoseLogs');
+  let logSheet = ss.getSheetByName('DoseLogs');
   if (!logSheet) {
-    logSheet = SPREADSHEET.insertSheet('DoseLogs');
+    logSheet = ss.insertSheet('DoseLogs');
     logSheet.appendRow(['id', 'medicationId', 'medicationName', 'type', 'quantity', 'unit', 'timestamp', 'timeSlot', 'notes']);
     logSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#2B6CB0').setFontColor('#FFFFFF');
   }
 }
 
 function doGet(e) {
-  setupSheets();
   try {
+    setupSheets();
     const params = (e && e.parameter) ? e.parameter : {};
     const action = params.action || 'get_all';
     const callback = params.callback;
@@ -1058,11 +1072,12 @@ function doGet(e) {
     if (action === 'save_all' && params.data) {
       const dataObj = JSON.parse(decodeURIComponent(params.data));
       saveAllData(dataObj.medications || [], dataObj.logs || []);
-      return respond({ status: 'success', message: 'Data saved successfully via JSONP' }, callback);
+      return respond({ status: 'success', message: 'Data saved successfully' }, callback);
     }
 
-    const medSheet = SPREADSHEET.getSheetByName('Medications');
-    const logSheet = SPREADSHEET.getSheetByName('DoseLogs');
+    const ss = getSpreadsheet();
+    const medSheet = ss.getSheetByName('Medications');
+    const logSheet = ss.getSheetByName('DoseLogs');
 
     const medData = getSheetObjects(medSheet);
     const logData = getSheetObjects(logSheet);
@@ -1098,8 +1113,8 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  setupSheets();
   try {
+    setupSheets();
     let postData = {};
     if (e && e.postData && e.postData.contents) {
       postData = JSON.parse(e.postData.contents);
@@ -1119,7 +1134,8 @@ function doPost(e) {
 }
 
 function saveAllData(medications, logs) {
-  const medSheet = SPREADSHEET.getSheetByName('Medications');
+  const ss = getSpreadsheet();
+  const medSheet = ss.getSheetByName('Medications');
   medSheet.clearContents();
   medSheet.appendRow(['id', 'name', 'type', 'quantity', 'unit', 'minIntervalHours', 'scheduledSlots', 'notes', 'updatedAt']);
   medSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#4A5568').setFontColor('#FFFFFF');
@@ -1138,7 +1154,7 @@ function saveAllData(medications, logs) {
     ]);
   });
 
-  const logSheet = SPREADSHEET.getSheetByName('DoseLogs');
+  const logSheet = ss.getSheetByName('DoseLogs');
   logSheet.clearContents();
   logSheet.appendRow(['id', 'medicationId', 'medicationName', 'type', 'quantity', 'unit', 'timestamp', 'timeSlot', 'notes']);
   logSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#2B6CB0').setFontColor('#FFFFFF');
