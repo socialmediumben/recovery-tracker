@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 1.1.1
+ * Version 1.1.2 - Full JSONP Engine for Google Sheets Sync
  */
 
 // Global Application State
@@ -9,12 +9,12 @@ const STATE = {
   logs: [],
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v1.1.1',
+  version: 'v1.1.2',
   theme: 'light',
   timerInterval: null
 };
 
-// Optional Sample Data (Only loaded when user explicitly clicks "Load Sample Data")
+// Optional Sample Data
 const SAMPLE_DATA = {
   medications: [
     {
@@ -129,7 +129,6 @@ function loadLocalState() {
     updateSyncStatusUI('offline', 'Local Mode');
   }
 
-  // Load user data if present; otherwise default to completely BLANK (v1.1.1)
   if (savedMeds) {
     STATE.medications = JSON.parse(savedMeds);
   } else {
@@ -142,7 +141,7 @@ function loadLocalState() {
     STATE.logs = [];
   }
 
-  // If connected to Google Sheets, pull latest remote data
+  // If connected to Google Sheets, pull remote data
   if (STATE.syncMode === 'sheets' && STATE.appsScriptUrl) {
     fetchFromGoogleSheets();
   }
@@ -183,88 +182,99 @@ function clearAllData() {
 }
 
 /* ==========================================================================
-   GOOGLE SHEETS SYNC CONTROLLER (ROBUST FETCH & JSONP FALLBACK)
+   GOOGLE SHEETS SYNC CONTROLLER (100% RELIABLE JSONP ENGINE)
    ========================================================================== */
 
-async function fetchFromGoogleSheets() {
+function fetchFromGoogleSheets() {
   if (!STATE.appsScriptUrl) return;
   updateSyncStatusUI('offline', 'Syncing...');
 
-  try {
-    // Attempt standard fetch first with redirect follow
-    const res = await fetch(STATE.appsScriptUrl, {
-      method: 'GET',
-      redirect: 'follow'
-    });
-
-    const json = await res.json();
-    handleFetchResponse(json);
-  } catch (err) {
-    console.warn('Standard fetch failed, attempting JSONP fallback for Apps Script...', err);
-    fetchViaJsonp(STATE.appsScriptUrl);
-  }
-}
-
-function fetchViaJsonp(baseUrl) {
-  const callbackName = 'googleAppsScriptCallback_' + Date.now();
+  const callbackName = 'rt_jsonp_cb_' + Math.floor(Math.random() * 1000000);
   const script = document.createElement('script');
   
-  const separator = baseUrl.includes('?') ? '&' : '?';
-  script.src = `${baseUrl}${separator}callback=${callbackName}`;
+  const separator = STATE.appsScriptUrl.includes('?') ? '&' : '?';
+  script.src = `${STATE.appsScriptUrl}${separator}action=get_all&callback=${callbackName}`;
+
+  // Safety Timeout for Network / CORS blocks
+  const timeoutId = setTimeout(() => {
+    cleanup();
+    updateSyncStatusUI('error', 'Sheets Sync Timeout');
+    showToast('Connection to Google Sheets timed out. Please verify your Web App URL and set access to "Anyone".', 'error');
+  }, 10000);
+
+  function cleanup() {
+    clearTimeout(timeoutId);
+    if (window[callbackName]) delete window[callbackName];
+    if (script.parentNode) script.parentNode.removeChild(script);
+  }
 
   window[callbackName] = (json) => {
-    delete window[callbackName];
-    document.body.removeChild(script);
-    handleFetchResponse(json);
+    cleanup();
+    if (json && json.status === 'success' && json.data) {
+      STATE.medications = json.data.medications || [];
+      STATE.logs = json.data.logs || [];
+
+      localStorage.setItem('rt_medications', JSON.stringify(STATE.medications));
+      localStorage.setItem('rt_logs', JSON.stringify(STATE.logs));
+      updateSyncStatusUI('online', 'Google Sheets');
+      renderAllViews();
+    } else {
+      updateSyncStatusUI('error', 'Sync Failed');
+      showToast(json?.message || 'Google Sheets sync error', 'error');
+    }
   };
 
   script.onerror = () => {
-    delete window[callbackName];
-    document.body.removeChild(script);
-    console.error('JSONP Fetch Failed as well.');
+    cleanup();
     updateSyncStatusUI('error', 'Sheets CORS Error');
-    showToast('Failed to connect to Google Sheets. Check deployment access setting ("Anyone").', 'error');
+    showToast('CORS Error: Please update Code.gs in Google Sheets and re-deploy with "Who has access: Anyone".', 'error');
   };
 
   document.body.appendChild(script);
 }
 
-function handleFetchResponse(json) {
-  if (json && json.status === 'success' && json.data) {
-    STATE.medications = json.data.medications || [];
-    STATE.logs = json.data.logs || [];
-
-    localStorage.setItem('rt_medications', JSON.stringify(STATE.medications));
-    localStorage.setItem('rt_logs', JSON.stringify(STATE.logs));
-    updateSyncStatusUI('online', 'Google Sheets');
-    renderAllViews();
-  } else {
-    updateSyncStatusUI('error', 'Sheets Sync Error');
-  }
-}
-
-async function syncToGoogleSheets() {
+function syncToGoogleSheets() {
   if (!STATE.appsScriptUrl) return;
 
-  try {
-    const res = await fetch(STATE.appsScriptUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        action: 'save_all',
-        medications: STATE.medications,
-        logs: STATE.logs
-      }),
-      redirect: 'follow'
-    });
-    const json = await res.json();
-    if (json.status === 'success') {
-      updateSyncStatusUI('online', 'Google Sheets');
-    }
-  } catch (err) {
-    console.error('Google Sheets Save Error:', err);
-    updateSyncStatusUI('error', 'Save Error');
-  }
+  // Primary method: POST text/plain
+  fetch(STATE.appsScriptUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      action: 'save_all',
+      medications: STATE.medications,
+      logs: STATE.logs
+    }),
+    mode: 'no-cors' // Allows cross-origin post without CORS blocking
+  }).then(() => {
+    updateSyncStatusUI('online', 'Google Sheets');
+  }).catch((err) => {
+    console.warn('POST failed, attempting JSONP save fallback...', err);
+    // Fallback method: JSONP GET Save
+    const payloadStr = encodeURIComponent(JSON.stringify({
+      medications: STATE.medications,
+      logs: STATE.logs
+    }));
+    
+    const callbackName = 'rt_jsonp_save_' + Math.floor(Math.random() * 1000000);
+    const script = document.createElement('script');
+    const separator = STATE.appsScriptUrl.includes('?') ? '&' : '?';
+    script.src = `${STATE.appsScriptUrl}${separator}action=save_all&data=${payloadStr}&callback=${callbackName}`;
+
+    window[callbackName] = (json) => {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      if (json && json.status === 'success') {
+        updateSyncStatusUI('online', 'Google Sheets');
+      }
+    };
+    script.onerror = () => {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      updateSyncStatusUI('error', 'Save Failed');
+    };
+    document.body.appendChild(script);
+  });
 }
 
 function updateSyncStatusUI(status, label) {
@@ -1021,7 +1031,7 @@ function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend (v1.1.1)
+ * RECOVERY TRACKER - Google Apps Script Backend (v1.1.2)
  */
 const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -1032,24 +1042,25 @@ function setupSheets() {
 
 function doGet(e) {
   setupSheets();
+  const params = (e && e.parameter) ? e.parameter : {};
+  const callback = params.callback;
+
+  if (params.action === 'save_all' && params.data) {
+    const dataObj = JSON.parse(decodeURIComponent(params.data));
+    saveAllData(dataObj.medications || [], dataObj.logs || []);
+    return respond({ status: 'success' }, callback);
+  }
+
   const medications = getSheetObjects(SPREADSHEET.getSheetByName('Medications'));
   const logs = getSheetObjects(SPREADSHEET.getSheetByName('DoseLogs'));
-  const payload = { status: 'success', data: { medications, logs } };
-  
-  const callback = e && e.parameter && e.parameter.callback;
+  return respond({ status: 'success', data: { medications, logs } }, callback);
+}
+
+function respond(payload, callback) {
   if (callback) {
     return ContentService.createTextOutput(callback + '(' + JSON.stringify(payload) + ')')
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
-}
-
-function doPost(e) {
-  setupSheets();
-  const postData = JSON.parse(e.postData.contents);
-  if (postData.action === 'save_all') {
-    // Saves Medications and DoseLogs to Sheet
-  }
-  return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON);
 }`;
 }

@@ -1,21 +1,20 @@
 /**
- * RECOVERY TRACKER - Google Apps Script Backend (v1.1.1)
+ * RECOVERY TRACKER - Google Apps Script Backend (v1.1.2 - Full JSONP & CORS Enabled)
  * 
  * Instructions:
  * 1. Open your Google Sheet
  * 2. Go to Extensions > Apps Script
- * 3. Delete any code in Code.gs and paste this entire code
- * 4. Click Save (disk icon)
- * 5. Click Deploy > New deployment (or Manage Deployments > Edit > New Version)
+ * 3. Replace all existing code in Code.gs with this exact file.
+ * 4. Click Save (disk icon).
+ * 5. Click Deploy > New deployment (or Manage Deployments > Edit > New Version).
  * 6. Set 'Execute as': Me
- * 7. Set 'Who has access': Anyone  <-- CRITICAL: Must be "Anyone" for CORS to work!
- * 8. Click Deploy, authorize access, and copy the Web App URL!
- * 9. Paste the Web App URL into Recovery Tracker Settings.
+ * 7. Set 'Who has access': Anyone  <-- CRITICAL! Must be "Anyone".
+ * 8. Click Deploy, copy the Web App URL, and paste it into Recovery Tracker Settings.
  */
 
 const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
 
-// Ensure sheet tabs exist with correct column headers
+// Ensure sheet tabs exist with correct headers
 function setupSheets() {
   let medSheet = SPREADSHEET.getSheetByName('Medications');
   if (!medSheet) {
@@ -32,10 +31,22 @@ function setupSheets() {
   }
 }
 
-// GET Endpoint - Fetch all medications and logs with CORS & JSONP support
+// GET Endpoint - Handles both FETCH & JSONP for GET and SAVE actions
 function doGet(e) {
   setupSheets();
   try {
+    const params = (e && e.parameter) ? e.parameter : {};
+    const action = params.action || 'get_all';
+    const callback = params.callback;
+
+    // Handle Save action via GET/JSONP if requested
+    if (action === 'save_all' && params.data) {
+      const dataObj = JSON.parse(decodeURIComponent(params.data));
+      saveAllData(dataObj.medications || [], dataObj.logs || []);
+      return respond({ status: 'success', message: 'Data saved successfully via JSONP' }, callback);
+    }
+
+    // Default Action: Fetch all data
     const medSheet = SPREADSHEET.getSheetByName('Medications');
     const logSheet = SPREADSHEET.getSheetByName('DoseLogs');
 
@@ -65,28 +76,14 @@ function doGet(e) {
       notes: String(l.notes || '')
     })).filter(l => l.id);
 
-    const payload = { status: 'success', data: { medications, logs } };
-    
-    // Support JSONP callback parameter if CORS is restricted
-    const callback = e && e.parameter && e.parameter.callback;
-    if (callback) {
-      return ContentService.createTextOutput(callback + '(' + JSON.stringify(payload) + ')')
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-
-    return createJsonResponse(payload);
+    return respond({ status: 'success', data: { medications, logs } }, callback);
   } catch (err) {
-    const errorPayload = { status: 'error', message: err.toString() };
-    const callback = e && e.parameter && e.parameter.callback;
-    if (callback) {
-      return ContentService.createTextOutput(callback + '(' + JSON.stringify(errorPayload) + ')')
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-    return createJsonResponse(errorPayload);
+    const callback = (e && e.parameter) ? e.parameter.callback : null;
+    return respond({ status: 'error', message: err.toString() }, callback);
   }
 }
 
-// POST Endpoint - Save or Update Medications / Logs
+// POST Endpoint - Handles standard POST requests
 function doPost(e) {
   setupSheets();
   try {
@@ -98,56 +95,55 @@ function doPost(e) {
     const action = postData.action || 'save_all';
 
     if (action === 'save_all') {
-      const medications = postData.medications || [];
-      const logs = postData.logs || [];
-
-      // Update Medications sheet
-      const medSheet = SPREADSHEET.getSheetByName('Medications');
-      medSheet.clearContents();
-      medSheet.appendRow(['id', 'name', 'type', 'quantity', 'unit', 'minIntervalHours', 'scheduledSlots', 'notes', 'updatedAt']);
-      medSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#4A5568').setFontColor('#FFFFFF');
-
-      medications.forEach(m => {
-        medSheet.appendRow([
-          m.id,
-          m.name,
-          m.type,
-          m.quantity,
-          m.unit,
-          m.minIntervalHours || 0,
-          Array.isArray(m.scheduledSlots) ? m.scheduledSlots.join(',') : '',
-          m.notes || '',
-          new Date().toISOString()
-        ]);
-      });
-
-      // Update DoseLogs sheet
-      const logSheet = SPREADSHEET.getSheetByName('DoseLogs');
-      logSheet.clearContents();
-      logSheet.appendRow(['id', 'medicationId', 'medicationName', 'type', 'quantity', 'unit', 'timestamp', 'timeSlot', 'notes']);
-      logSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#2B6CB0').setFontColor('#FFFFFF');
-
-      logs.forEach(l => {
-        logSheet.appendRow([
-          l.id,
-          l.medicationId,
-          l.medicationName,
-          l.type,
-          l.quantity,
-          l.unit,
-          l.timestamp,
-          l.timeSlot || '',
-          l.notes || ''
-        ]);
-      });
-
-      return createJsonResponse({ status: 'success', message: 'All data synchronized successfully.' });
+      saveAllData(postData.medications || [], postData.logs || []);
+      return respond({ status: 'success', message: 'All data synchronized successfully.' }, null);
     }
 
-    return createJsonResponse({ status: 'error', message: 'Unknown action parameter' });
+    return respond({ status: 'error', message: 'Unknown action parameter' }, null);
   } catch (err) {
-    return createJsonResponse({ status: 'error', message: err.toString() });
+    return respond({ status: 'error', message: err.toString() }, null);
   }
+}
+
+// Helper to save all data to sheets
+function saveAllData(medications, logs) {
+  const medSheet = SPREADSHEET.getSheetByName('Medications');
+  medSheet.clearContents();
+  medSheet.appendRow(['id', 'name', 'type', 'quantity', 'unit', 'minIntervalHours', 'scheduledSlots', 'notes', 'updatedAt']);
+  medSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#4A5568').setFontColor('#FFFFFF');
+
+  medications.forEach(m => {
+    medSheet.appendRow([
+      m.id,
+      m.name,
+      m.type,
+      m.quantity,
+      m.unit,
+      m.minIntervalHours || 0,
+      Array.isArray(m.scheduledSlots) ? m.scheduledSlots.join(',') : '',
+      m.notes || '',
+      new Date().toISOString()
+    ]);
+  });
+
+  const logSheet = SPREADSHEET.getSheetByName('DoseLogs');
+  logSheet.clearContents();
+  logSheet.appendRow(['id', 'medicationId', 'medicationName', 'type', 'quantity', 'unit', 'timestamp', 'timeSlot', 'notes']);
+  logSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#2B6CB0').setFontColor('#FFFFFF');
+
+  logs.forEach(l => {
+    logSheet.appendRow([
+      l.id,
+      l.medicationId,
+      l.medicationName,
+      l.type,
+      l.quantity,
+      l.unit,
+      l.timestamp,
+      l.timeSlot || '',
+      l.notes || ''
+    ]);
+  });
 }
 
 // Helper to convert sheet rows into JSON objects
@@ -169,8 +165,13 @@ function getSheetObjects(sheet) {
   return objects;
 }
 
-// Helper to construct HTTP JSON response
-function createJsonResponse(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
+// Response Formatter (Supports both standard JSON and JSONP callbacks)
+function respond(payload, callback) {
+  if (callback) {
+    const jsonpOutput = callback + '(' + JSON.stringify(payload) + ')';
+    return ContentService.createTextOutput(jsonpOutput)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
 }
