@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,15 +21,21 @@
         </div>
         <div class="brand-text">
           <h1>Recovery Tracker</h1>
-          <span class="brand-tagline">Smart Medication & Dose Interval Tracker <span class="badge-version" id="versionBadge">v1.0.0</span></span>
+          <span class="brand-tagline">Smart Medication & Dose Interval Tracker <span class="badge-version" id="versionBadge">v1.1.1</span></span>
         </div>
       </div>
 
       <div class="header-actions">
+        <!-- Theme Switcher -->
+        <button class="btn btn-secondary theme-toggle-btn" id="btnThemeToggle" title="Toggle Light / Dark Mode">
+          <i class="fa-solid fa-sun" id="themeIcon"></i> <span id="themeLabel">Light Mode</span>
+        </button>
+
         <div class="sync-status-pill" id="syncStatusPill" title="Click to open Google Sheets Settings">
           <span class="status-dot offline" id="syncStatusDot"></span>
           <span class="status-text" id="syncStatusText">Local Mode</span>
         </div>
+
         <button class="btn btn-secondary" id="btnInfoModal">
           <i class="fa-solid fa-circle-info"></i> Information
         </button>
@@ -263,7 +269,7 @@
       <section class="tab-content" id="tab-settings">
         <div class="settings-card">
           <h2><i class="fa-brands fa-google-drive color-green"></i> Google Sheets Backend Connection</h2>
-          <p class="section-desc">Connect Recovery Tracker to your personal Google Sheet to store data safely in the cloud and access it from any device or GitHub Pages!</p>
+          <p class="section-desc">Connect Recovery Tracker to your personal Google Sheet to store data safely in the cloud and access it from any device!</p>
 
           <div class="sync-config-box">
             <div class="form-group">
@@ -280,6 +286,17 @@
                 <i class="fa-solid fa-rotate"></i> Sync Now
               </button>
             </div>
+
+            <!-- CORS / Permission Alert Warning Box -->
+            <div class="cors-warning-box">
+              <h4><i class="fa-solid fa-shield-halved"></i> Important Setup Requirement for Google Sheets</h4>
+              <p>If you see a CORS error or connection error when syncing, make sure your deployment settings in Google Apps Script are configured as follows:</p>
+              <ul>
+                <li><strong>Execute as:</strong> <code>Me</code></li>
+                <li><strong>Who has access:</strong> <code>Anyone</code> <em>(DO NOT choose "Only me" or "Anyone with Google account")</em></li>
+              </ul>
+              <small>If you just updated the script, click <strong>Deploy &gt; New Deployment</strong> (or <strong>Manage Deployments &gt; Edit &gt; New Version</strong>) to apply changes.</small>
+            </div>
           </div>
 
           <div class="instructions-accordion">
@@ -288,7 +305,7 @@
               <li>Open Google Sheets (<a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a>) and create a blank sheet named <strong>"Recovery Tracker DB"</strong>.</li>
               <li>Click <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
               <li>Delete any existing code in the editor.</li>
-              <li>Copy and paste the Apps Script code below into the code editor:</li>
+              <li>Copy and paste the updated Apps Script code below into the editor:</li>
             </ol>
 
             <div class="code-snippet-box">
@@ -298,24 +315,23 @@
 
             <ol class="setup-steps" start="5">
               <li>Click the <strong>Save (Floppy Disk)</strong> icon.</li>
-              <li>Click <strong>Deploy</strong> &gt; <strong>New deployment</strong>.</li>
-              <li>Click the gear icon next to "Select type" and select <strong>Web app</strong>.</li>
-              <li>Set <strong>Execute as</strong> to: <em>"Me"</em>.</li>
-              <li>Set <strong>Who has access</strong> to: <em>"Anyone"</em>.</li>
-              <li>Click <strong>Deploy</strong>, authorize the permissions, and copy the resulting <strong>Web App URL</strong>.</li>
+              <li>Click <strong>Deploy</strong> &gt; <strong>New deployment</strong> (or <strong>Manage deployments &gt; Edit &gt; New Version</strong>).</li>
+              <li>Set <strong>Execute as</strong>: <em>"Me"</em>.</li>
+              <li>Set <strong>Who has access</strong>: <em>"Anyone"</em>.</li>
+              <li>Click <strong>Deploy</strong>, authorize permissions, and copy the resulting <strong>Web App URL</strong>.</li>
               <li>Paste that Web App URL above and click <strong>Save & Test Connection</strong>!</li>
             </ol>
           </div>
 
           <div class="data-reset-box">
             <h4><i class="fa-solid fa-triangle-exclamation color-rose"></i> Data Management</h4>
-            <p>Reset local data or load demo sample medications.</p>
+            <p>Load optional sample medications or clear all local data.</p>
             <div class="reset-buttons">
               <button class="btn btn-outline" id="btnLoadSampleData">
-                <i class="fa-solid fa-flask"></i> Load Sample Data
+                <i class="fa-solid fa-flask"></i> Load Sample Data (Optional)
               </button>
               <button class="btn btn-danger" id="btnClearAllData">
-                <i class="fa-solid fa-trash"></i> Clear All Data
+                <i class="fa-solid fa-trash"></i> Clear All Local Data
               </button>
             </div>
           </div>
@@ -334,14 +350,14 @@
       </div>
       <div class="modal-body">
         <div class="info-hero">
-          <div class="info-version-pill">Version 1.0.0</div>
+          <div class="info-version-pill">Version 1.1.1</div>
           <h3>Your Personal Medical & Dose Compliance Companion</h3>
-          <p>Recovery Tracker is designed to make managing medications effortless, safe, and transparent whether hosted locally or on GitHub Pages.</p>
+          <p>Recovery Tracker is designed to make managing medications effortless, safe, and transparent.</p>
         </div>
 
         <div class="info-tabs">
           <button class="info-tab-btn active" data-infotab="info-guide">How to Use</button>
-          <button class="info-tab-btn" data-infotab="info-changelog">Changelog</button>
+          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v1.1.1)</button>
           <button class="info-tab-btn" data-infotab="info-about">Technical Info</button>
         </div>
 
@@ -381,25 +397,32 @@
         <div class="info-tab-content" id="info-changelog">
           <div class="changelog-timeline">
             <div class="changelog-item">
+              <span class="changelog-version">v1.1.1 (Current Release)</span>
+              <span class="changelog-date">August 2026</span>
+              <ul>
+                <li>☀️ Added <strong>Light Mode</strong> / Dark Mode toggle switch in header.</li>
+                <li>🧹 Removed test sample data by default — app now opens clean & blank when no data exists.</li>
+                <li>🌐 Robust Google Apps Script fetch fallback with CORS error resolution & JSONP support.</li>
+                <li>⚙️ Added CORS setup troubleshooting guide in Google Sheets Sync tab.</li>
+              </ul>
+            </div>
+            <div class="changelog-item" style="margin-top: 1rem;">
               <span class="changelog-version">v1.0.0 (Initial Release)</span>
               <span class="changelog-date">August 2026</span>
               <ul>
                 <li>✨ Initial launch of Recovery Tracker web application.</li>
-                <li>🛑 Dynamic Red/Green status indicator cards for As-Needed interval tracking with live countdown.</li>
+                <li>🛑 Dynamic Red/Green status indicator cards for As-Needed interval tracking.</li>
                 <li>📅 Morning, Afternoon, Evening, Night daily schedule tracking.</li>
                 <li>📝 Dose logging with custom quantity, unit, exact timestamp, and notes.</li>
-                <li>📊 Interactive log reports with CSV export and print-ready medical report formatting.</li>
-                <li>☁️ Google Sheets Apps Script backend integration for GitHub Pages deployment.</li>
-                <li>💾 Offline LocalStorage automatic fallback.</li>
               </ul>
             </div>
           </div>
         </div>
 
         <div class="info-tab-content" id="info-about">
-          <p><strong>Hosting:</strong> Designed for static deployment on GitHub Pages.</p>
-          <p><strong>Storage:</strong> Dual-layer architecture (LocalStorage + Google Sheets REST Web App API).</p>
-          <p><strong>Privacy:</strong> All data is stored directly on your browser or in your personal Google Drive account. No third-party servers.</p>
+          <p><strong>Hosting:</strong> GitHub Pages static hosting compatible.</p>
+          <p><strong>Storage:</strong> Dual-layer architecture (LocalStorage + Google Sheets REST API).</p>
+          <p><strong>Privacy:</strong> All data remains private in your browser or your Google Drive account.</p>
         </div>
       </div>
       <div class="modal-footer">

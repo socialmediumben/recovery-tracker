@@ -1,22 +1,21 @@
 /**
- * RECOVERY TRACKER - Google Apps Script Backend
+ * RECOVERY TRACKER - Google Apps Script Backend (v1.1.1)
  * 
  * Instructions:
  * 1. Open your Google Sheet
  * 2. Go to Extensions > Apps Script
  * 3. Delete any code in Code.gs and paste this entire code
  * 4. Click Save (disk icon)
- * 5. Click Deploy > New deployment
- * 6. Select type: Web app
- * 7. Set 'Execute as': Me
- * 8. Set 'Who has access': Anyone
- * 9. Click Deploy, authorize access, and copy the Web App URL!
- * 10. Paste the Web App URL into Recovery Tracker Settings.
+ * 5. Click Deploy > New deployment (or Manage Deployments > Edit > New Version)
+ * 6. Set 'Execute as': Me
+ * 7. Set 'Who has access': Anyone  <-- CRITICAL: Must be "Anyone" for CORS to work!
+ * 8. Click Deploy, authorize access, and copy the Web App URL!
+ * 9. Paste the Web App URL into Recovery Tracker Settings.
  */
 
 const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
 
-// Ensure sheet tabs exist
+// Ensure sheet tabs exist with correct column headers
 function setupSheets() {
   let medSheet = SPREADSHEET.getSheetByName('Medications');
   if (!medSheet) {
@@ -33,7 +32,7 @@ function setupSheets() {
   }
 }
 
-// GET Endpoint - Fetch all medications and logs
+// GET Endpoint - Fetch all medications and logs with CORS & JSONP support
 function doGet(e) {
   setupSheets();
   try {
@@ -43,21 +42,20 @@ function doGet(e) {
     const medData = getSheetObjects(medSheet);
     const logData = getSheetObjects(logSheet);
 
-    // Format fields
     const medications = medData.map(m => ({
-      id: String(m.id),
+      id: String(m.id || ''),
       name: String(m.name || ''),
       type: String(m.type || 'as-needed'),
       quantity: Number(m.quantity || 1),
       unit: String(m.unit || 'Tablet'),
-      minIntervalHours: Number(m.minIntervalHours || 4),
+      minIntervalHours: Number(m.minIntervalHours || 0),
       scheduledSlots: m.scheduledSlots ? String(m.scheduledSlots).split(',') : [],
       notes: String(m.notes || '')
-    }));
+    })).filter(m => m.id);
 
     const logs = logData.map(l => ({
-      id: String(l.id),
-      medicationId: String(l.medicationId),
+      id: String(l.id || ''),
+      medicationId: String(l.medicationId || ''),
       medicationName: String(l.medicationName || ''),
       type: String(l.type || 'as-needed'),
       quantity: Number(l.quantity || 1),
@@ -65,11 +63,26 @@ function doGet(e) {
       timestamp: String(l.timestamp || ''),
       timeSlot: String(l.timeSlot || ''),
       notes: String(l.notes || '')
-    }));
+    })).filter(l => l.id);
 
-    return createJsonResponse({ status: 'success', data: { medications, logs } });
+    const payload = { status: 'success', data: { medications, logs } };
+    
+    // Support JSONP callback parameter if CORS is restricted
+    const callback = e && e.parameter && e.parameter.callback;
+    if (callback) {
+      return ContentService.createTextOutput(callback + '(' + JSON.stringify(payload) + ')')
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+
+    return createJsonResponse(payload);
   } catch (err) {
-    return createJsonResponse({ status: 'error', message: err.toString() });
+    const errorPayload = { status: 'error', message: err.toString() };
+    const callback = e && e.parameter && e.parameter.callback;
+    if (callback) {
+      return ContentService.createTextOutput(callback + '(' + JSON.stringify(errorPayload) + ')')
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorPayload);
   }
 }
 
@@ -77,8 +90,12 @@ function doGet(e) {
 function doPost(e) {
   setupSheets();
   try {
-    const postData = JSON.parse(e.postData.contents);
-    const action = postData.action;
+    let postData = {};
+    if (e && e.postData && e.postData.contents) {
+      postData = JSON.parse(e.postData.contents);
+    }
+
+    const action = postData.action || 'save_all';
 
     if (action === 'save_all') {
       const medications = postData.medications || [];
@@ -127,23 +144,6 @@ function doPost(e) {
       return createJsonResponse({ status: 'success', message: 'All data synchronized successfully.' });
     }
 
-    if (action === 'log_dose') {
-      const l = postData.log;
-      const logSheet = SPREADSHEET.getSheetByName('DoseLogs');
-      logSheet.appendRow([
-        l.id,
-        l.medicationId,
-        l.medicationName,
-        l.type,
-        l.quantity,
-        l.unit,
-        l.timestamp,
-        l.timeSlot || '',
-        l.notes || ''
-      ]);
-      return createJsonResponse({ status: 'success', message: 'Dose logged successfully.' });
-    }
-
     return createJsonResponse({ status: 'error', message: 'Unknown action parameter' });
   } catch (err) {
     return createJsonResponse({ status: 'error', message: err.toString() });
@@ -159,7 +159,7 @@ function getSheetObjects(sheet) {
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (!row[0]) continue; // Skip blank IDs
+    if (!row[0]) continue;
     const obj = {};
     for (let j = 0; j < headers.length; j++) {
       obj[headers[j]] = row[j];
@@ -169,7 +169,7 @@ function getSheetObjects(sheet) {
   return objects;
 }
 
-// Helper to construct HTTP JSON response with CORS headers
+// Helper to construct HTTP JSON response
 function createJsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);

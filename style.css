@@ -1,8 +1,9 @@
 /* ==========================================================================
    RECOVERY TRACKER - Design System & Stylesheet
+   Version 1.1.1
    ========================================================================== */
 
-:root {
+:root, [data-theme="light"] {
   /* Color Palette - HSL Tailored */
   --primary-h: 215;
   --primary-s: 85%;
@@ -14,24 +15,24 @@
   /* Status Colors */
   --rose-h: 350;
   --rose-s: 84%;
-  --rose-l: 60%;
+  --rose-l: 55%;
   --rose: hsl(var(--rose-h), var(--rose-s), var(--rose-l));
   --rose-bg: hsl(var(--rose-h), 85%, 97%);
   --rose-border: hsl(var(--rose-h), 80%, 88%);
-  --rose-glow: rgba(244, 63, 94, 0.25);
+  --rose-glow: rgba(244, 63, 94, 0.2);
 
   --emerald-h: 155;
   --emerald-s: 75%;
-  --emerald-l: 45%;
+  --emerald-l: 40%;
   --emerald: hsl(var(--emerald-h), var(--emerald-s), var(--emerald-l));
   --emerald-bg: hsl(var(--emerald-h), 75%, 97%);
   --emerald-border: hsl(var(--emerald-h), 65%, 85%);
-  --emerald-glow: rgba(16, 185, 129, 0.25);
+  --emerald-glow: rgba(16, 185, 129, 0.2);
 
-  --amber: #f59e0b;
-  --indigo: #6366f1;
+  --amber: #d97706;
+  --indigo: #4f46e5;
 
-  /* Neutral Dark/Light Tokens */
+  /* Neutral Light Tokens */
   --bg-main: #f8fafc;
   --bg-card: #ffffff;
   --text-main: #0f172a;
@@ -46,20 +47,22 @@
   --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Dark Mode Preference Support */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-main: #0b0f17;
-    --bg-card: #151c28;
-    --text-main: #f1f5f9;
-    --text-muted: #94a3b8;
-    --border-color: #1e293b;
-    --rose-bg: rgba(244, 63, 94, 0.12);
-    --rose-border: rgba(244, 63, 94, 0.35);
-    --emerald-bg: rgba(16, 185, 129, 0.12);
-    --emerald-border: rgba(16, 185, 129, 0.35);
-    --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
-  }
+[data-theme="dark"] {
+  --primary-light: rgba(37, 99, 235, 0.15);
+  --bg-main: #0b0f17;
+  --bg-card: #151c28;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border-color: #1e293b;
+
+  --rose-bg: rgba(244, 63, 94, 0.12);
+  --rose-border: rgba(244, 63, 94, 0.35);
+  --emerald-bg: rgba(16, 185, 129, 0.12);
+  --emerald-border: rgba(16, 185, 129, 0.35);
+
+  --amber: #f59e0b;
+  --indigo: #6366f1;
+  --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
 }
 
 /* Reset & Base Styles */
@@ -77,6 +80,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 a {
@@ -157,6 +161,16 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.theme-toggle-btn {
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+}
+.theme-toggle-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .sync-status-pill {
@@ -443,6 +457,9 @@ a:hover {
   font-weight: 600;
   margin-top: 0.35rem;
 }
+[data-theme="dark"] .med-dosage-badge {
+  background: rgba(255, 255, 255, 0.1);
+}
 
 .card-status-badge {
   padding: 0.3rem 0.65rem;
@@ -475,14 +492,15 @@ a:hover {
 }
 
 .timer-box {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 0.75rem;
   text-align: center;
   margin-bottom: 0.85rem;
 }
 
-.dark-mode .timer-box {
+[data-theme="dark"] .timer-box {
   background: rgba(0, 0, 0, 0.25);
 }
 
@@ -515,11 +533,14 @@ a:hover {
 
 .card-notes {
   font-size: 0.82rem;
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(0, 0, 0, 0.04);
   padding: 0.5rem 0.75rem;
   border-radius: 6px;
   margin-top: 0.5rem;
   font-style: italic;
+}
+[data-theme="dark"] .card-notes {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .card-bottom {
@@ -689,6 +710,9 @@ a:hover {
   font-weight: 700;
   color: var(--text-muted);
 }
+[data-theme="dark"] .report-table th {
+  background: rgba(255, 255, 255, 0.04);
+}
 
 .empty-state {
   text-align: center;
@@ -715,6 +739,25 @@ a:hover {
   background: var(--bg-main);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
+}
+
+.cors-warning-box {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+}
+.cors-warning-box h4 {
+  color: var(--amber);
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.cors-warning-box ul {
+  margin: 0.5rem 0 0.5rem 1.25rem;
 }
 
 .settings-button-row {

@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 1.0.0
+ * Version 1.1.1
  */
 
 // Global Application State
@@ -9,11 +9,12 @@ const STATE = {
   logs: [],
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v1.0.0',
+  version: 'v1.1.1',
+  theme: 'light',
   timerInterval: null
 };
 
-// Default Sample Data (Loaded on first app launch)
+// Optional Sample Data (Only loaded when user explicitly clicks "Load Sample Data")
 const SAMPLE_DATA = {
   medications: [
     {
@@ -45,26 +46,6 @@ const SAMPLE_DATA = {
       minIntervalHours: 0,
       scheduledSlots: ['Morning'],
       notes: 'Take in the morning with breakfast.'
-    },
-    {
-      id: 'med_sample_4',
-      name: 'Amoxicillin 500mg',
-      type: 'scheduled',
-      quantity: 1,
-      unit: 'Capsule',
-      minIntervalHours: 0,
-      scheduledSlots: ['Morning', 'Afternoon', 'Evening'],
-      notes: 'Complete full course of antibiotics.'
-    },
-    {
-      id: 'med_sample_5',
-      name: 'Melatonin 3mg',
-      type: 'scheduled',
-      quantity: 1,
-      unit: 'Tablet',
-      minIntervalHours: 0,
-      scheduledSlots: ['Night'],
-      notes: 'Take 30 minutes before bedtime.'
     }
   ],
   logs: [
@@ -75,31 +56,9 @@ const SAMPLE_DATA = {
       type: 'as-needed',
       quantity: 1,
       unit: 'Tablet',
-      timestamp: new Date(Date.now() - 2.5 * 3600 * 1000).toISOString(), // 2.5 hours ago (in cooldown)
+      timestamp: new Date(Date.now() - 2.5 * 3600 * 1000).toISOString(),
       timeSlot: '',
       notes: 'Logged after lunch for mild back pain.'
-    },
-    {
-      id: 'log_sample_2',
-      medicationId: 'med_sample_2',
-      medicationName: 'Acetaminophen (Tylenol)',
-      type: 'as-needed',
-      quantity: 2,
-      unit: 'Tablet',
-      timestamp: new Date(Date.now() - 8 * 3600 * 1000).toISOString(), // 8 hours ago (ready)
-      timeSlot: '',
-      notes: 'Morning headache.'
-    },
-    {
-      id: 'log_sample_3',
-      medicationId: 'med_sample_3',
-      medicationName: 'Daily Multivitamin',
-      type: 'scheduled',
-      quantity: 1,
-      unit: 'Capsule',
-      timestamp: new Date().toISOString(),
-      timeSlot: 'Morning',
-      notes: 'Taken with breakfast.'
     }
   ]
 };
@@ -110,11 +69,45 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
+  initTheme();
   loadLocalState();
   setupEventListeners();
   setupAppsScriptCodeDisplay();
   startLiveTimer();
   renderAllViews();
+}
+
+/* ==========================================================================
+   THEME MANAGER (LIGHT MODE / DARK MODE)
+   ========================================================================== */
+
+function initTheme() {
+  const savedTheme = localStorage.getItem('rt_theme') || 'light';
+  applyTheme(savedTheme);
+}
+
+function applyTheme(theme) {
+  STATE.theme = theme;
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('rt_theme', theme);
+
+  const themeIcon = document.getElementById('themeIcon');
+  const themeLabel = document.getElementById('themeLabel');
+  if (themeIcon && themeLabel) {
+    if (theme === 'dark') {
+      themeIcon.className = 'fa-solid fa-moon';
+      themeLabel.textContent = 'Dark Mode';
+    } else {
+      themeIcon.className = 'fa-solid fa-sun';
+      themeLabel.textContent = 'Light Mode';
+    }
+  }
+}
+
+function toggleTheme() {
+  const newTheme = STATE.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(newTheme);
+  showToast(`Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} Mode`, 'info');
 }
 
 /* ==========================================================================
@@ -130,20 +123,26 @@ function loadLocalState() {
     STATE.appsScriptUrl = savedUrl;
     STATE.syncMode = 'sheets';
     updateSyncStatusUI('online', 'Google Sheets');
+    document.getElementById('appsScriptUrl').value = savedUrl;
   } else {
     STATE.syncMode = 'local';
     updateSyncStatusUI('offline', 'Local Mode');
   }
 
-  if (savedMeds && savedLogs) {
+  // Load user data if present; otherwise default to completely BLANK (v1.1.1)
+  if (savedMeds) {
     STATE.medications = JSON.parse(savedMeds);
-    STATE.logs = JSON.parse(savedLogs);
   } else {
-    // Load default sample data on first launch
-    loadSampleData(false);
+    STATE.medications = [];
   }
 
-  // If connected to Google Sheets, attempt remote sync
+  if (savedLogs) {
+    STATE.logs = JSON.parse(savedLogs);
+  } else {
+    STATE.logs = [];
+  }
+
+  // If connected to Google Sheets, pull latest remote data
   if (STATE.syncMode === 'sheets' && STATE.appsScriptUrl) {
     fetchFromGoogleSheets();
   }
@@ -158,7 +157,6 @@ function saveState() {
     localStorage.removeItem('rt_apps_script_url');
   }
 
-  // If connected to Google Sheets, sync in background
   if (STATE.syncMode === 'sheets' && STATE.appsScriptUrl) {
     syncToGoogleSheets();
   }
@@ -176,16 +174,16 @@ function loadSampleData(shouldNotify = true) {
 }
 
 function clearAllData() {
-  if (confirm('Are you sure you want to clear all medications and dose logs? This cannot be undone.')) {
+  if (confirm('Are you sure you want to clear all local medications and dose logs? This cannot be undone.')) {
     STATE.medications = [];
     STATE.logs = [];
     saveState();
-    showToast('All data cleared.', 'error');
+    showToast('All local data cleared.', 'info');
   }
 }
 
 /* ==========================================================================
-   GOOGLE SHEETS SYNC CONTROLLER
+   GOOGLE SHEETS SYNC CONTROLLER (ROBUST FETCH & JSONP FALLBACK)
    ========================================================================== */
 
 async function fetchFromGoogleSheets() {
@@ -193,26 +191,55 @@ async function fetchFromGoogleSheets() {
   updateSyncStatusUI('offline', 'Syncing...');
 
   try {
-    const res = await fetch(STATE.appsScriptUrl);
-    const json = await res.json();
+    // Attempt standard fetch first with redirect follow
+    const res = await fetch(STATE.appsScriptUrl, {
+      method: 'GET',
+      redirect: 'follow'
+    });
 
-    if (json.status === 'success' && json.data) {
-      if (json.data.medications && json.data.medications.length > 0) {
-        STATE.medications = json.data.medications;
-      }
-      if (json.data.logs && json.data.logs.length > 0) {
-        STATE.logs = json.data.logs;
-      }
-      localStorage.setItem('rt_medications', JSON.stringify(STATE.medications));
-      localStorage.setItem('rt_logs', JSON.stringify(STATE.logs));
-      updateSyncStatusUI('online', 'Google Sheets');
-      renderAllViews();
-    } else {
-      updateSyncStatusUI('error', 'Sheets Sync Error');
-    }
+    const json = await res.json();
+    handleFetchResponse(json);
   } catch (err) {
-    console.error('Google Sheets Fetch Error:', err);
-    updateSyncStatusUI('error', 'Sheets Error');
+    console.warn('Standard fetch failed, attempting JSONP fallback for Apps Script...', err);
+    fetchViaJsonp(STATE.appsScriptUrl);
+  }
+}
+
+function fetchViaJsonp(baseUrl) {
+  const callbackName = 'googleAppsScriptCallback_' + Date.now();
+  const script = document.createElement('script');
+  
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  script.src = `${baseUrl}${separator}callback=${callbackName}`;
+
+  window[callbackName] = (json) => {
+    delete window[callbackName];
+    document.body.removeChild(script);
+    handleFetchResponse(json);
+  };
+
+  script.onerror = () => {
+    delete window[callbackName];
+    document.body.removeChild(script);
+    console.error('JSONP Fetch Failed as well.');
+    updateSyncStatusUI('error', 'Sheets CORS Error');
+    showToast('Failed to connect to Google Sheets. Check deployment access setting ("Anyone").', 'error');
+  };
+
+  document.body.appendChild(script);
+}
+
+function handleFetchResponse(json) {
+  if (json && json.status === 'success' && json.data) {
+    STATE.medications = json.data.medications || [];
+    STATE.logs = json.data.logs || [];
+
+    localStorage.setItem('rt_medications', JSON.stringify(STATE.medications));
+    localStorage.setItem('rt_logs', JSON.stringify(STATE.logs));
+    updateSyncStatusUI('online', 'Google Sheets');
+    renderAllViews();
+  } else {
+    updateSyncStatusUI('error', 'Sheets Sync Error');
   }
 }
 
@@ -227,7 +254,8 @@ async function syncToGoogleSheets() {
         action: 'save_all',
         medications: STATE.medications,
         logs: STATE.logs
-      })
+      }),
+      redirect: 'follow'
     });
     const json = await res.json();
     if (json.status === 'success') {
@@ -235,7 +263,7 @@ async function syncToGoogleSheets() {
     }
   } catch (err) {
     console.error('Google Sheets Save Error:', err);
-    updateSyncStatusUI('error', 'Save Failed');
+    updateSyncStatusUI('error', 'Save Error');
   }
 }
 
@@ -275,7 +303,7 @@ function renderOverviewStats() {
   });
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const dosesToday = STATE.logs.filter(l => l.timestamp.startsWith(todayStr)).length;
+  const dosesToday = STATE.logs.filter(l => l.timestamp && l.timestamp.startsWith(todayStr)).length;
 
   document.getElementById('statReadyCount').textContent = readyCount;
   document.getElementById('statCooldownCount').textContent = cooldownCount;
@@ -293,8 +321,11 @@ function renderAsNeededMeds() {
     container.innerHTML = `
       <div class="empty-state">
         <i class="fa-solid fa-hand-holding-medical"></i>
-        <p>No As-Needed medications added yet.</p>
-        <button class="btn btn-sm btn-primary" onclick="openAddMedicationModal('as-needed')">Add As-Needed Med</button>
+        <h3>No As-Needed medications added</h3>
+        <p>Click below to add your first interval-based medication.</p>
+        <button class="btn btn-sm btn-primary" style="margin-top:0.75rem" onclick="openAddMedicationModal('as-needed')">
+          <i class="fa-solid fa-plus"></i> Add As-Needed Medication
+        </button>
       </div>
     `;
     return;
@@ -357,8 +388,11 @@ function renderScheduledMeds() {
     container.innerHTML = `
       <div class="empty-state">
         <i class="fa-solid fa-calendar-days"></i>
-        <p>No Scheduled medications added yet.</p>
-        <button class="btn btn-sm btn-primary" onclick="openAddMedicationModal('scheduled')">Add Scheduled Med</button>
+        <h3>No Scheduled medications added</h3>
+        <p>Click below to add a scheduled daily medication.</p>
+        <button class="btn btn-sm btn-primary" style="margin-top:0.75rem" onclick="openAddMedicationModal('scheduled')">
+          <i class="fa-solid fa-plus"></i> Add Scheduled Medication
+        </button>
       </div>
     `;
     return;
@@ -403,7 +437,7 @@ function renderScheduledMeds() {
   }).join('');
 }
 
-// 4. DAILY SCHEDULE CHECKLIST (Morning, Afternoon, Evening, Night)
+// 4. DAILY SCHEDULE CHECKLIST
 function renderDailySchedule() {
   const slots = ['Morning', 'Afternoon', 'Evening', 'Night'];
   const todayStr = new Date().toISOString().split('T')[0];
@@ -413,7 +447,6 @@ function renderDailySchedule() {
     const badgeEl = document.getElementById(`badge${slot}`);
     if (!listEl) return;
 
-    // Filter scheduled meds that have this slot
     const slotMeds = STATE.medications.filter(m => m.type === 'scheduled' && (m.scheduledSlots || []).includes(slot));
     
     let takenCount = 0;
@@ -425,10 +458,9 @@ function renderDailySchedule() {
     }
 
     listEl.innerHTML = slotMeds.map(med => {
-      // Check if logged today for this slot
       const isTakenToday = STATE.logs.some(l => 
         l.medicationId === med.id && 
-        l.timestamp.startsWith(todayStr) && 
+        l.timestamp && l.timestamp.startsWith(todayStr) && 
         (l.timeSlot === slot || !l.timeSlot)
       );
 
@@ -474,19 +506,16 @@ function renderLogsTable() {
   const now = Date.now();
 
   const filteredLogs = STATE.logs.filter(log => {
-    // Search query filter
     const matchesSearch = log.medicationName.toLowerCase().includes(searchQuery) ||
                           (log.notes && log.notes.toLowerCase().includes(searchQuery));
     if (!matchesSearch) return false;
 
-    // Med Type filter
     if (typeFilter !== 'all' && log.type !== typeFilter) return false;
 
-    // Date range filter
     const logTime = new Date(log.timestamp).getTime();
     if (dateFilter === 'today') {
       const todayStr = new Date().toISOString().split('T')[0];
-      if (!log.timestamp.startsWith(todayStr)) return false;
+      if (!log.timestamp || !log.timestamp.startsWith(todayStr)) return false;
     } else if (dateFilter === '7days') {
       if (now - logTime > 7 * 24 * 3600 * 1000) return false;
     } else if (dateFilter === '30days') {
@@ -496,7 +525,6 @@ function renderLogsTable() {
     return true;
   });
 
-  // Sort logs descending (newest first)
   filteredLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   if (filteredLogs.length === 0) {
@@ -529,7 +557,6 @@ function renderLogsTable() {
     `;
   }).join('');
 
-  // Update print metadata date
   const printMeta = document.getElementById('printMetaDate');
   if (printMeta) {
     printMeta.textContent = `Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`;
@@ -545,7 +572,7 @@ function getAsNeededStatus(med) {
   if (!lastLog) {
     return {
       isCooldown: false,
-      countdownText: 'Ready (No logs yet)',
+      countdownText: 'READY TO TAKE',
       lastTakenText: 'Never'
     };
   }
@@ -582,7 +609,6 @@ function getLastLogForMed(medId) {
 function startLiveTimer() {
   if (STATE.timerInterval) clearInterval(STATE.timerInterval);
   STATE.timerInterval = setInterval(() => {
-    // Update active countdown displays without full re-render
     const asNeededMeds = STATE.medications.filter(m => m.type === 'as-needed');
     asNeededMeds.forEach(med => {
       const countdownEl = document.querySelector(`[data-countdown="${med.id}"]`);
@@ -590,7 +616,6 @@ function startLiveTimer() {
         const status = getAsNeededStatus(med);
         countdownEl.textContent = status.countdownText;
 
-        // If status changed card color, refresh grid
         const card = countdownEl.closest('.med-card');
         if (card) {
           if (status.isCooldown && !card.classList.contains('card-cooldown')) {
@@ -611,6 +636,9 @@ function startLiveTimer() {
    ========================================================================== */
 
 function setupEventListeners() {
+  // Theme Switcher Button
+  document.getElementById('btnThemeToggle')?.addEventListener('click', () => toggleTheme());
+
   // Navigation Tabs
   document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
@@ -739,7 +767,6 @@ function openAddMedicationModal(defaultType = 'as-needed') {
 
   document.querySelectorAll('input[name="schedSlot"]').forEach(cb => cb.checked = false);
 
-  // Trigger change
   document.getElementById('medType').dispatchEvent(new Event('change'));
   document.getElementById('modalMedication').classList.remove('hidden');
 }
@@ -836,7 +863,6 @@ function openLogDoseModal(medId, timeSlot = '') {
   document.getElementById('logUnit').value = med.unit;
   document.getElementById('logNotes').value = '';
 
-  // Default to current local time in ISO format for datetime-local
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   document.getElementById('logTimestamp').value = now.toISOString().slice(0, 16);
@@ -981,7 +1007,7 @@ function showToast(message, type = 'success') {
 
   const toast = document.createElement('div');
   toast.className = 'toast';
-  const icon = type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-check';
+  const icon = type === 'error' ? 'fa-triangle-exclamation' : (type === 'info' ? 'fa-circle-info' : 'fa-circle-check');
   toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${escapeHtml(message)}</span>`;
 
   container.appendChild(toast);
@@ -995,7 +1021,7 @@ function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend
+ * RECOVERY TRACKER - Google Apps Script Backend (v1.1.1)
  */
 const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -1008,8 +1034,14 @@ function doGet(e) {
   setupSheets();
   const medications = getSheetObjects(SPREADSHEET.getSheetByName('Medications'));
   const logs = getSheetObjects(SPREADSHEET.getSheetByName('DoseLogs'));
-  return ContentService.createTextOutput(JSON.stringify({ status: 'success', data: { medications, logs } }))
-    .setMimeType(ContentService.MimeType.JSON);
+  const payload = { status: 'success', data: { medications, logs } };
+  
+  const callback = e && e.parameter && e.parameter.callback;
+  if (callback) {
+    return ContentService.createTextOutput(callback + '(' + JSON.stringify(payload) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
@@ -1018,7 +1050,6 @@ function doPost(e) {
   if (postData.action === 'save_all') {
     // Saves Medications and DoseLogs to Sheet
   }
-  return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON);
 }`;
 }
