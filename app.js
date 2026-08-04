@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 1.1.2 - Full JSONP Engine for Google Sheets Sync
+ * Version 1.1.3
  */
 
 // Global Application State
@@ -9,7 +9,7 @@ const STATE = {
   logs: [],
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v1.1.2',
+  version: 'v1.1.3',
   theme: 'light',
   timerInterval: null
 };
@@ -141,7 +141,6 @@ function loadLocalState() {
     STATE.logs = [];
   }
 
-  // If connected to Google Sheets, pull remote data
   if (STATE.syncMode === 'sheets' && STATE.appsScriptUrl) {
     fetchFromGoogleSheets();
   }
@@ -195,7 +194,6 @@ function fetchFromGoogleSheets() {
   const separator = STATE.appsScriptUrl.includes('?') ? '&' : '?';
   script.src = `${STATE.appsScriptUrl}${separator}action=get_all&callback=${callbackName}`;
 
-  // Safety Timeout for Network / CORS blocks
   const timeoutId = setTimeout(() => {
     cleanup();
     updateSyncStatusUI('error', 'Sheets Sync Timeout');
@@ -236,7 +234,6 @@ function fetchFromGoogleSheets() {
 function syncToGoogleSheets() {
   if (!STATE.appsScriptUrl) return;
 
-  // Primary method: POST text/plain
   fetch(STATE.appsScriptUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -245,12 +242,11 @@ function syncToGoogleSheets() {
       medications: STATE.medications,
       logs: STATE.logs
     }),
-    mode: 'no-cors' // Allows cross-origin post without CORS blocking
+    mode: 'no-cors'
   }).then(() => {
     updateSyncStatusUI('online', 'Google Sheets');
   }).catch((err) => {
     console.warn('POST failed, attempting JSONP save fallback...', err);
-    // Fallback method: JSONP GET Save
     const payloadStr = encodeURIComponent(JSON.stringify({
       medications: STATE.medications,
       logs: STATE.logs
@@ -646,10 +642,8 @@ function startLiveTimer() {
    ========================================================================== */
 
 function setupEventListeners() {
-  // Theme Switcher Button
   document.getElementById('btnThemeToggle')?.addEventListener('click', () => toggleTheme());
 
-  // Navigation Tabs
   document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -661,14 +655,12 @@ function setupEventListeners() {
     });
   });
 
-  // Header Buttons
   document.getElementById('btnAddMedication')?.addEventListener('click', () => openAddMedicationModal());
   document.getElementById('btnInfoModal')?.addEventListener('click', () => openInfoModal());
   document.getElementById('syncStatusPill')?.addEventListener('click', () => {
     document.querySelector('[data-tab="tab-settings"]')?.click();
   });
 
-  // Settings Buttons
   document.getElementById('btnSaveSettings')?.addEventListener('click', () => {
     const urlInput = document.getElementById('appsScriptUrl').value.trim();
     if (urlInput) {
@@ -697,7 +689,6 @@ function setupEventListeners() {
   document.getElementById('btnLoadSampleData')?.addEventListener('click', () => loadSampleData(true));
   document.getElementById('btnClearAllData')?.addEventListener('click', () => clearAllData());
 
-  // Copy Script Code
   document.getElementById('btnCopyScriptCode')?.addEventListener('click', () => {
     const code = document.getElementById('scriptCodeDisplay').textContent;
     navigator.clipboard.writeText(code).then(() => {
@@ -705,20 +696,16 @@ function setupEventListeners() {
     });
   });
 
-  // Filters Event Listeners
   document.getElementById('filterSearch')?.addEventListener('input', () => renderLogsTable());
   document.getElementById('filterDateRange')?.addEventListener('change', () => renderLogsTable());
   document.getElementById('filterMedType')?.addEventListener('change', () => renderLogsTable());
 
-  // Export CSV & Print
   document.getElementById('btnExportCSV')?.addEventListener('click', () => exportLogsToCSV());
   document.getElementById('btnPrintReport')?.addEventListener('click', () => window.print());
 
-  // Form Submissions
   document.getElementById('formMedication')?.addEventListener('submit', (e) => handleSaveMedication(e));
   document.getElementById('formLogDose')?.addEventListener('submit', (e) => handleSaveLogDose(e));
 
-  // Modal Closures
   document.getElementById('btnCloseInfoModal')?.addEventListener('click', () => closeInfoModal());
   document.getElementById('btnDismissInfoModal')?.addEventListener('click', () => closeInfoModal());
   document.getElementById('btnCloseMedModal')?.addEventListener('click', () => closeMedicationModal());
@@ -726,7 +713,6 @@ function setupEventListeners() {
   document.getElementById('btnCloseLogDose')?.addEventListener('click', () => closeLogDoseModal());
   document.getElementById('btnCancelLogDose')?.addEventListener('click', () => closeLogDoseModal());
 
-  // Dynamic Type Selector in Medication Modal
   document.getElementById('medType')?.addEventListener('change', (e) => {
     const val = e.target.value;
     const grpInterval = document.getElementById('groupMinInterval');
@@ -741,7 +727,6 @@ function setupEventListeners() {
     }
   });
 
-  // Info Modal Tabs
   document.querySelectorAll('.info-tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.info-tab-btn').forEach(b => b.classList.remove('active'));
@@ -1030,37 +1015,174 @@ function showToast(message, type = 'success') {
 function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
+  // Renders the FULL 100% exact source code of google_apps_script.gs v1.1.3
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend (v1.1.2)
+ * RECOVERY TRACKER - Google Apps Script Backend (v1.1.3 - Full JSONP & CORS Enabled)
+ * 
+ * Instructions:
+ * 1. Open your Google Sheet
+ * 2. Go to Extensions > Apps Script
+ * 3. Replace all existing code in Code.gs with this exact file.
+ * 4. Click Save (disk icon).
+ * 5. Click Deploy > New deployment (or Manage Deployments > Edit > New Version).
+ * 6. Set 'Execute as': Me
+ * 7. Set 'Who has access': Anyone  <-- CRITICAL! Must be "Anyone".
+ * 8. Click Deploy, copy the Web App URL, and paste it into Recovery Tracker Settings.
  */
+
 const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
 
 function setupSheets() {
-  let medSheet = SPREADSHEET.getSheetByName('Medications') || SPREADSHEET.insertSheet('Medications');
-  let logSheet = SPREADSHEET.getSheetByName('DoseLogs') || SPREADSHEET.insertSheet('DoseLogs');
+  let medSheet = SPREADSHEET.getSheetByName('Medications');
+  if (!medSheet) {
+    medSheet = SPREADSHEET.insertSheet('Medications');
+    medSheet.appendRow(['id', 'name', 'type', 'quantity', 'unit', 'minIntervalHours', 'scheduledSlots', 'notes', 'updatedAt']);
+    medSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#4A5568').setFontColor('#FFFFFF');
+  }
+
+  let logSheet = SPREADSHEET.getSheetByName('DoseLogs');
+  if (!logSheet) {
+    logSheet = SPREADSHEET.insertSheet('DoseLogs');
+    logSheet.appendRow(['id', 'medicationId', 'medicationName', 'type', 'quantity', 'unit', 'timestamp', 'timeSlot', 'notes']);
+    logSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#2B6CB0').setFontColor('#FFFFFF');
+  }
 }
 
 function doGet(e) {
   setupSheets();
-  const params = (e && e.parameter) ? e.parameter : {};
-  const callback = params.callback;
+  try {
+    const params = (e && e.parameter) ? e.parameter : {};
+    const action = params.action || 'get_all';
+    const callback = params.callback;
 
-  if (params.action === 'save_all' && params.data) {
-    const dataObj = JSON.parse(decodeURIComponent(params.data));
-    saveAllData(dataObj.medications || [], dataObj.logs || []);
-    return respond({ status: 'success' }, callback);
+    if (action === 'save_all' && params.data) {
+      const dataObj = JSON.parse(decodeURIComponent(params.data));
+      saveAllData(dataObj.medications || [], dataObj.logs || []);
+      return respond({ status: 'success', message: 'Data saved successfully via JSONP' }, callback);
+    }
+
+    const medSheet = SPREADSHEET.getSheetByName('Medications');
+    const logSheet = SPREADSHEET.getSheetByName('DoseLogs');
+
+    const medData = getSheetObjects(medSheet);
+    const logData = getSheetObjects(logSheet);
+
+    const medications = medData.map(m => ({
+      id: String(m.id || ''),
+      name: String(m.name || ''),
+      type: String(m.type || 'as-needed'),
+      quantity: Number(m.quantity || 1),
+      unit: String(m.unit || 'Tablet'),
+      minIntervalHours: Number(m.minIntervalHours || 0),
+      scheduledSlots: m.scheduledSlots ? String(m.scheduledSlots).split(',') : [],
+      notes: String(m.notes || '')
+    })).filter(m => m.id);
+
+    const logs = logData.map(l => ({
+      id: String(l.id || ''),
+      medicationId: String(l.medicationId || ''),
+      medicationName: String(l.medicationName || ''),
+      type: String(l.type || 'as-needed'),
+      quantity: Number(l.quantity || 1),
+      unit: String(l.unit || 'Tablet'),
+      timestamp: String(l.timestamp || ''),
+      timeSlot: String(l.timeSlot || ''),
+      notes: String(l.notes || '')
+    })).filter(l => l.id);
+
+    return respond({ status: 'success', data: { medications, logs } }, callback);
+  } catch (err) {
+    const callback = (e && e.parameter) ? e.parameter.callback : null;
+    return respond({ status: 'error', message: err.toString() }, callback);
   }
+}
 
-  const medications = getSheetObjects(SPREADSHEET.getSheetByName('Medications'));
-  const logs = getSheetObjects(SPREADSHEET.getSheetByName('DoseLogs'));
-  return respond({ status: 'success', data: { medications, logs } }, callback);
+function doPost(e) {
+  setupSheets();
+  try {
+    let postData = {};
+    if (e && e.postData && e.postData.contents) {
+      postData = JSON.parse(e.postData.contents);
+    }
+
+    const action = postData.action || 'save_all';
+
+    if (action === 'save_all') {
+      saveAllData(postData.medications || [], postData.logs || []);
+      return respond({ status: 'success', message: 'All data synchronized successfully.' }, null);
+    }
+
+    return respond({ status: 'error', message: 'Unknown action parameter' }, null);
+  } catch (err) {
+    return respond({ status: 'error', message: err.toString() }, null);
+  }
+}
+
+function saveAllData(medications, logs) {
+  const medSheet = SPREADSHEET.getSheetByName('Medications');
+  medSheet.clearContents();
+  medSheet.appendRow(['id', 'name', 'type', 'quantity', 'unit', 'minIntervalHours', 'scheduledSlots', 'notes', 'updatedAt']);
+  medSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#4A5568').setFontColor('#FFFFFF');
+
+  medications.forEach(m => {
+    medSheet.appendRow([
+      m.id,
+      m.name,
+      m.type,
+      m.quantity,
+      m.unit,
+      m.minIntervalHours || 0,
+      Array.isArray(m.scheduledSlots) ? m.scheduledSlots.join(',') : '',
+      m.notes || '',
+      new Date().toISOString()
+    ]);
+  });
+
+  const logSheet = SPREADSHEET.getSheetByName('DoseLogs');
+  logSheet.clearContents();
+  logSheet.appendRow(['id', 'medicationId', 'medicationName', 'type', 'quantity', 'unit', 'timestamp', 'timeSlot', 'notes']);
+  logSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#2B6CB0').setFontColor('#FFFFFF');
+
+  logs.forEach(l => {
+    logSheet.appendRow([
+      l.id,
+      l.medicationId,
+      l.medicationName,
+      l.type,
+      l.quantity,
+      l.unit,
+      l.timestamp,
+      l.timeSlot || '',
+      l.notes || ''
+    ]);
+  });
+}
+
+function getSheetObjects(sheet) {
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+  const headers = rows[0];
+  const objects = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row[0]) continue;
+    const obj = {};
+    for (let j = 0; j < headers.length; j++) {
+      obj[headers[j]] = row[j];
+    }
+    objects.push(obj);
+  }
+  return objects;
 }
 
 function respond(payload, callback) {
   if (callback) {
-    return ContentService.createTextOutput(callback + '(' + JSON.stringify(payload) + ')')
+    const jsonpOutput = callback + '(' + JSON.stringify(payload) + ')';
+    return ContentService.createTextOutput(jsonpOutput)
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
-  return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
 }`;
 }

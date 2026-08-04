@@ -21,7 +21,7 @@
         </div>
         <div class="brand-text">
           <h1>Recovery Tracker</h1>
-          <span class="brand-tagline">Smart Medication & Dose Interval Tracker <span class="badge-version" id="versionBadge">v1.1.1</span></span>
+          <span class="brand-tagline">Smart Medication & Dose Interval Tracker <span class="badge-version" id="versionBadge">v1.1.3</span></span>
         </div>
       </div>
 
@@ -289,13 +289,13 @@
 
             <!-- CORS / Permission Alert Warning Box -->
             <div class="cors-warning-box">
-              <h4><i class="fa-solid fa-shield-halved"></i> Important Setup Requirement for Google Sheets</h4>
-              <p>If you see a CORS error or connection error when syncing, make sure your deployment settings in Google Apps Script are configured as follows:</p>
+              <h4><i class="fa-solid fa-shield-halved"></i> Deployment Requirements for Google Sheets</h4>
+              <p>When deploying your Google Apps Script Web App, ensure these exact settings are selected:</p>
               <ul>
                 <li><strong>Execute as:</strong> <code>Me</code></li>
-                <li><strong>Who has access:</strong> <code>Anyone</code> <em>(DO NOT choose "Only me" or "Anyone with Google account")</em></li>
+                <li><strong>Who has access:</strong> <code>Anyone</code> <em>(DO NOT select "Only me" or "Anyone with Google account")</em></li>
               </ul>
-              <small>If you just updated the script, click <strong>Deploy &gt; New Deployment</strong> (or <strong>Manage Deployments &gt; Edit &gt; New Version</strong>) to apply changes.</small>
+              <small>After updating Code.gs, click <strong>Deploy &gt; New Deployment</strong> (or <strong>Manage Deployments &gt; Edit &gt; New Version</strong>) to apply changes.</small>
             </div>
           </div>
 
@@ -305,7 +305,7 @@
               <li>Open Google Sheets (<a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a>) and create a blank sheet named <strong>"Recovery Tracker DB"</strong>.</li>
               <li>Click <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
               <li>Delete any existing code in the editor.</li>
-              <li>Copy and paste the updated Apps Script code below into the editor:</li>
+              <li>Copy and paste the full Apps Script v1.1.3 code below into the editor:</li>
             </ol>
 
             <div class="code-snippet-box">
@@ -350,14 +350,14 @@
       </div>
       <div class="modal-body">
         <div class="info-hero">
-          <div class="info-version-pill">Version 1.1.1</div>
+          <div class="info-version-pill">Version 1.1.3</div>
           <h3>Your Personal Medical & Dose Compliance Companion</h3>
           <p>Recovery Tracker is designed to make managing medications effortless, safe, and transparent.</p>
         </div>
 
         <div class="info-tabs">
           <button class="info-tab-btn active" data-infotab="info-guide">How to Use</button>
-          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v1.1.1)</button>
+          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v1.1.3)</button>
           <button class="info-tab-btn" data-infotab="info-about">Technical Info</button>
         </div>
 
@@ -397,13 +397,21 @@
         <div class="info-tab-content" id="info-changelog">
           <div class="changelog-timeline">
             <div class="changelog-item">
-              <span class="changelog-version">v1.1.1 (Current Release)</span>
+              <span class="changelog-version">v1.1.3 (Current Release)</span>
+              <span class="changelog-date">August 2026</span>
+              <ul>
+                <li>📜 Updated in-app Apps Script display code to render the full, complete v1.1.3 backend script for 1-click copying.</li>
+                <li>🔄 Activated robust JSONP sync engine for zero CORS errors with Google Sheets.</li>
+                <li>🔖 Synchronized version badges (`v1.1.3`) and in-app changelog across all components.</li>
+              </ul>
+            </div>
+            <div class="changelog-item" style="margin-top: 1rem;">
+              <span class="changelog-version">v1.1.1 &amp; v1.1.2</span>
               <span class="changelog-date">August 2026</span>
               <ul>
                 <li>☀️ Added <strong>Light Mode</strong> / Dark Mode toggle switch in header.</li>
-                <li>🧹 Removed test sample data by default — app now opens clean & blank when no data exists.</li>
-                <li>🌐 Robust Google Apps Script fetch fallback with CORS error resolution & JSONP support.</li>
-                <li>⚙️ Added CORS setup troubleshooting guide in Google Sheets Sync tab.</li>
+                <li>🧹 Removed test sample data by default — app now opens clean &amp; blank when no data exists.</li>
+                <li>🌐 Google Apps Script JSONP fallback for CORS resolution.</li>
               </ul>
             </div>
             <div class="changelog-item" style="margin-top: 1rem;">
@@ -413,7 +421,6 @@
                 <li>✨ Initial launch of Recovery Tracker web application.</li>
                 <li>🛑 Dynamic Red/Green status indicator cards for As-Needed interval tracking.</li>
                 <li>📅 Morning, Afternoon, Evening, Night daily schedule tracking.</li>
-                <li>📝 Dose logging with custom quantity, unit, exact timestamp, and notes.</li>
               </ul>
             </div>
           </div>

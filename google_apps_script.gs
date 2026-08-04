@@ -1,5 +1,5 @@
 /**
- * RECOVERY TRACKER - Google Apps Script Backend (v1.1.2 - Full JSONP & CORS Enabled)
+ * RECOVERY TRACKER - Google Apps Script Backend (v1.1.3 - Full JSONP & CORS Enabled)
  * 
  * Instructions:
  * 1. Open your Google Sheet

@@ -1,10 +1,10 @@
-# Recovery Tracker 💊❤️
+# Recovery Tracker 💊❤️ (v1.1.3)
 
 A modern, responsive, and intuitive web application to track medication doses and interval compliance. Designed to run as a static site hosted on **GitHub Pages** with optional seamless **Google Sheets backend integration** (via Google Apps Script).
 
 ---
 
-## 🌟 Key Features
+## 🌟 Key Features (v1.1.3)
 
 1. **"As Needed" Medications (Interval-based)**:
    - Minimum interval constraints (e.g. at least 4 hours between doses).
@@ -16,72 +16,39 @@ A modern, responsive, and intuitive web application to track medication doses an
    - Schedule slots: **Morning**, **Afternoon**, **Evening**, **Night**.
    - Daily checklist view with progress badges.
 
-3. **Core Medication Fields**:
-   - Medication Name
-   - Quantity Number (e.g. `1`, `2.5`, `500`)
-   - Quantity Unit (`Tablet`, `Capsule`, `Teaspoon`, `mg`, `ml`, `Drop`, `Puff`, etc.)
-   - Last Time Taken (Relative time + exact timestamp)
-   - Notes & Special Instructions
+3. **Light / Dark Mode Theme Switcher**:
+   - Built-in theme toggle switch in the header (`☀️ Light Mode` / `🌙 Dark Mode`).
+   - Theme choice is saved automatically in your browser.
 
-4. **Information & Help Modal**:
-   - Usage instructions and guide.
-   - Version number (`v1.0.0`).
-   - Feature changelog.
+4. **Blank Initial State**:
+   - Opens clean & blank by default without placeholder test data.
 
-5. **History Log & Doctor Reports**:
+5. **Pure JSONP Sync Engine (CORS-Free Google Sheets Backend)**:
+   - Uses JSONP dynamic script injection to read and write to Google Sheets smoothly without CORS blocks on static hosts like GitHub Pages.
+
+6. **Information & Help Modal**:
+   - Usage guide, version tracking (`v1.1.3`), and full release changelog.
+
+7. **History Log & Doctor Reports**:
    - Full timeline log of all dose instances.
-   - Filter by date range (Today, Last 7 Days, Last 30 Days, All Time) or medication type.
-   - Live search bar.
-   - **Export CSV** button for data backup or spreadsheet analysis.
-   - **Print Doctor Report** button formatted specifically for print/PDF output.
-
-6. **Dual Data Engine (LocalStorage + Google Sheets)**:
-   - Works offline immediately out-of-the-box using browser LocalStorage.
-   - Built-in wizard for connecting a free Google Sheet as a persistent cloud database API.
+   - Date range & search filters.
+   - **Export CSV** and **Print Doctor Report** buttons.
 
 ---
 
 ## 🚀 How to Host on GitHub Pages
 
-1. **Initialize Git Repository**:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit for Recovery Tracker"
-   ```
-2. **Push to GitHub**:
-   - Create a public or private repository on GitHub (e.g., `recovery-tracker`).
-   - Push your code:
-     ```bash
-     git remote add origin https://github.com/YOUR_USERNAME/recovery-tracker.git
-     git branch -M main
-     git push -u origin main
-     ```
-3. **Enable GitHub Pages**:
-   - Go to your GitHub repository **Settings** > **Pages**.
-   - Under **Source**, select `Deploy from a branch`.
-   - Select branch `main` and folder `/ (root)`.
-   - Click **Save**. Your site will be live at `https://YOUR_USERNAME.github.io/recovery-tracker/` in seconds!
+1. Push your repository to GitHub (`https://github.com/socialmediumben/recovery-tracker`).
+2. Enable GitHub Pages under **Settings** > **Pages** > **Source**: `Deploy from a branch` (`main` branch, `/ (root)`).
 
 ---
 
-## 📊 How to Set Up Google Sheets as Database Backend
+## 📊 Setting Up Google Sheets Integration
 
-1. Open [Google Sheets](https://sheets.new) and create a blank sheet named **"Recovery Tracker DB"**.
+1. Create a blank Google Sheet named **"Recovery Tracker DB"**.
 2. Click **Extensions** > **Apps Script**.
-3. Copy the entire code from [`google_apps_script.gs`](google_apps_script.gs) and paste it into `Code.gs` in the Apps Script editor.
+3. Copy the full script from [`google_apps_script.gs`](google_apps_script.gs) (or from the **Google Sheets Sync** tab inside Recovery Tracker).
 4. Click **Save (Disk icon)**.
 5. Click **Deploy** > **New deployment**.
-6. Under "Select type", choose **Web app**.
-7. Configure:
-   - **Execute as**: `Me`
-   - **Who has access**: `Anyone`
-8. Click **Deploy**, grant permissions, and copy the resulting **Web App URL**.
-9. In Recovery Tracker, navigate to **Google Sheets Sync**, paste your Web App URL, and click **Save & Test Connection**.
-
----
-
-## 💻 Tech Stack
-- **HTML5 & Vanilla CSS3**: Tailwind-free glassmorphic design system, CSS HSL color tokens, dark mode support.
-- **JavaScript (ES6+)**: SPA architecture, LocalStorage API, Fetch API, live interval timers.
-- **Google Apps Script**: Lightweight Web App REST service returning JSON for Google Sheets.
+6. Set **Execute as**: `Me` and **Who has access**: `Anyone`.
+7. Copy the Web App URL and paste it into **Recovery Tracker Settings**.
