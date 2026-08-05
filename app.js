@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 2.1.0 - Accurate Local Timezone Day Calculator & Drain Output Engine
+ * Version 2.2.0 - Mobile Optimized UX & Speed Dial FAB
  */
 
 // Global Application State
@@ -10,7 +10,7 @@ const STATE = {
   drainLogs: [],
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v2.1.0',
+  version: 'v2.2.0',
   theme: 'light',
   lastSyncedTime: null,
   isInitialFetchDone: false,
@@ -115,10 +115,10 @@ function applyTheme(theme) {
   if (themeIcon && themeLabel) {
     if (theme === 'dark') {
       themeIcon.className = 'fa-solid fa-moon';
-      themeLabel.textContent = 'Dark Mode';
+      themeLabel.textContent = 'Dark';
     } else {
       themeIcon.className = 'fa-solid fa-sun';
-      themeLabel.textContent = 'Light Mode';
+      themeLabel.textContent = 'Light';
     }
   }
 }
@@ -197,7 +197,7 @@ function clearAllData() {
 }
 
 /* ==========================================================================
-   MULTI-DEVICE SMART SYNC ENGINE (v2.1.0)
+   MULTI-DEVICE SMART SYNC ENGINE (v2.2.0)
    ========================================================================== */
 
 function fetchFromGoogleSheets() {
@@ -429,8 +429,6 @@ function renderOverviewStats() {
     .filter(d => isTodayLocal(d.timestamp))
     .reduce((sum, d) => sum + (Number(d.volumeMl) || 0), 0);
 
-  const dosesToday = STATE.logs.filter(l => isTodayLocal(l.timestamp)).length;
-
   document.getElementById('statReadyCount').textContent = readyCount;
   document.getElementById('statCooldownCount').textContent = cooldownCount;
   document.getElementById('statScheduledCount').textContent = scheduled.length;
@@ -489,13 +487,13 @@ function renderAsNeededMeds() {
         </div>
 
         <div class="card-bottom">
-          <button class="btn btn-primary" onclick="openLogDoseModal('${med.id}')">
+          <button class="btn btn-primary touch-target" onclick="openLogDoseModal('${med.id}')">
             <i class="fa-solid fa-plus-circle"></i> Log Dose
           </button>
-          <button class="btn btn-secondary btn-icon-only" onclick="openEditMedicationModal('${med.id}')" title="Edit Medication">
+          <button class="btn btn-secondary btn-icon-only touch-target" onclick="openEditMedicationModal('${med.id}')" title="Edit Medication">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
-          <button class="btn btn-secondary btn-icon-only" onclick="deleteMedication('${med.id}')" title="Delete Medication">
+          <button class="btn btn-secondary btn-icon-only touch-target" onclick="deleteMedication('${med.id}')" title="Delete Medication">
             <i class="fa-solid fa-trash-can"></i>
           </button>
         </div>
@@ -548,13 +546,13 @@ function renderScheduledMeds() {
         </div>
 
         <div class="card-bottom">
-          <button class="btn btn-primary" onclick="openLogDoseModal('${med.id}')">
+          <button class="btn btn-primary touch-target" onclick="openLogDoseModal('${med.id}')">
             <i class="fa-solid fa-check-double"></i> Quick Log
           </button>
-          <button class="btn btn-secondary btn-icon-only" onclick="openEditMedicationModal('${med.id}')" title="Edit">
+          <button class="btn btn-secondary btn-icon-only touch-target" onclick="openEditMedicationModal('${med.id}')" title="Edit">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
-          <button class="btn btn-secondary btn-icon-only" onclick="deleteMedication('${med.id}')" title="Delete">
+          <button class="btn btn-secondary btn-icon-only touch-target" onclick="deleteMedication('${med.id}')" title="Delete">
             <i class="fa-solid fa-trash-can"></i>
           </button>
         </div>
@@ -600,7 +598,7 @@ function renderDailySchedule() {
           ${isTakenToday ? `
             <span class="badge-ready"><i class="fa-solid fa-check"></i> Logged</span>
           ` : `
-            <button class="btn btn-sm btn-primary" onclick="openLogDoseModal('${med.id}', '${slot}')">
+            <button class="btn btn-sm btn-primary touch-target" onclick="openLogDoseModal('${med.id}', '${slot}')">
               <i class="fa-solid fa-check"></i> Mark Taken
             </button>
           `}
@@ -618,7 +616,7 @@ function renderDailySchedule() {
   }
 }
 
-// 5. MEDICAL DRAINS TRACKER VIEWS (v2.1.0 - Local Timezone Calendar Fix)
+// 5. MEDICAL DRAINS TRACKER VIEWS
 function renderDrainViews() {
   const drainIds = ['drain_1', 'drain_2', 'drain_3', 'drain_4'];
 
@@ -627,7 +625,6 @@ function renderDrainViews() {
     const dLogs = STATE.drainLogs.filter(d => d.drainId === dId);
     dLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    // ACCURATE LOCAL TIMEZONE TODAY CALCULATION
     const todayTotal = dLogs
       .filter(d => isTodayLocal(d.timestamp))
       .reduce((sum, d) => sum + (Number(d.volumeMl) || 0), 0);
@@ -669,7 +666,7 @@ function renderDrainViews() {
       <td>${escapeHtml(d.fluidCharacter)}</td>
       <td>${d.notes ? escapeHtml(d.notes) : '<em>No notes</em>'}</td>
       <td class="no-print">
-        <button class="btn btn-sm btn-outline" onclick="deleteDrainLog('${d.id}')" title="Delete entry">
+        <button class="btn btn-sm btn-outline touch-target" onclick="deleteDrainLog('${d.id}')" title="Delete entry">
           <i class="fa-solid fa-trash"></i>
         </button>
       </td>
@@ -736,7 +733,7 @@ function renderLogsTable() {
         <td>${log.timeSlot ? `<span class="slot-badge" style="color:#000">${log.timeSlot}</span>` : 'N/A'}</td>
         <td>${log.notes ? escapeHtml(log.notes) : '<em>No notes</em>'}</td>
         <td class="no-print">
-          <button class="btn btn-sm btn-outline" onclick="deleteLogEntry('${log.id}')" title="Delete entry">
+          <button class="btn btn-sm btn-outline touch-target" onclick="deleteLogEntry('${log.id}')" title="Delete entry">
             <i class="fa-solid fa-trash"></i>
           </button>
         </td>
@@ -819,12 +816,13 @@ function startLiveTimer() {
 }
 
 /* ==========================================================================
-   EVENT HANDLERS & MODAL CONTROLLERS
+   EVENT HANDLERS & MOBILE FAB MENU (v2.2.0)
    ========================================================================== */
 
 function setupEventListeners() {
   document.getElementById('btnThemeToggle')?.addEventListener('click', () => toggleTheme());
 
+  // Navigation Tabs
   document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -833,8 +831,25 @@ function setupEventListeners() {
       e.currentTarget.classList.add('active');
       const targetId = e.currentTarget.dataset.tab;
       document.getElementById(targetId).classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   });
+
+  // Mobile Speed Dial Floating Action Button (FAB)
+  const fabBtn = document.getElementById('btnMobileFab');
+  const fabOptions = document.getElementById('fabOptions');
+  
+  if (fabBtn && fabOptions) {
+    fabBtn.addEventListener('click', () => {
+      const isHidden = fabOptions.classList.contains('hidden');
+      if (isHidden) {
+        fabOptions.classList.remove('hidden');
+        fabBtn.classList.add('active');
+      } else {
+        closeFabMenu();
+      }
+    });
+  }
 
   document.getElementById('btnAddMedication')?.addEventListener('click', () => openAddMedicationModal());
   document.getElementById('btnQuickLogDrain')?.addEventListener('click', () => openLogDrainModal());
@@ -922,6 +937,13 @@ function setupEventListeners() {
       document.getElementById(targetId).classList.add('active');
     });
   });
+}
+
+function closeFabMenu() {
+  const fabBtn = document.getElementById('btnMobileFab');
+  const fabOptions = document.getElementById('fabOptions');
+  if (fabOptions) fabOptions.classList.add('hidden');
+  if (fabBtn) fabBtn.classList.remove('active');
 }
 
 /* ==========================================================================
@@ -1209,10 +1231,6 @@ function exportLogsToCSV() {
    UTILITY & FORMATTING FUNCTIONS
    ========================================================================== */
 
-/**
- * Bulletproof Local Timezone Day Calculator
- * Compares year, month, and day in the browser's local timezone.
- */
 function isTodayLocal(isoOrDateString) {
   if (!isoOrDateString) return false;
   const d = new Date(isoOrDateString);
@@ -1291,7 +1309,7 @@ function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend (v2.1.0 - Medications & 4 Medical Drains Tracker)
+ * RECOVERY TRACKER - Google Apps Script Backend (v2.2.0 - Mobile UX & Multi-Device Tracker)
  * 
  * Instructions:
  * 1. Open your Google Sheet.

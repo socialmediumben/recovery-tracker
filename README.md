@@ -1,26 +1,27 @@
-# Recovery Tracker 💊❤️ (v2.1.0)
+# Recovery Tracker 💊❤️ (v2.2.0)
 
 A comprehensive, modern web application to track medication doses, interval compliance, and **4 Medical Surgical Drains** across all your devices (laptop, phone, tablet). Designed to run as a static site hosted on **GitHub Pages** with **Google Sheets** as the single source of truth.
 
 ---
 
-## 🌟 Key Features (v2.1.0)
+## 🌟 Key Features (v2.2.0)
 
-1. **🩸 Medical Drain Output Tracker (4 Drains)**:
+1. **📱 Mobile-First UX & Ergonomics (v2.2.0)**:
+   - **Fixed Bottom Tab Navigation Bar**: Native app tab bar on mobile screens (`Meds`, `Drains`, `Schedule`, `Reports`, `Sync`) with notch safe-area insets.
+   - **Mobile Speed Dial FAB Button**: Floating Action Button (+ FAB) in the bottom right corner for 1-tap logging of medication doses or drain outputs from anywhere.
+   - **Mobile Bottom Sheets**: Modals transform into bottom sheets with touch targets (min 44px) and 16px inputs to prevent mobile browser auto-zoom.
+
+2. **🩸 Medical Drain Output Tracker (4 Drains)**:
    - **Track 4 Surgical Drains**: Record output volume in **ml/cc** for Drain 1, Drain 2, Drain 3, and Drain 4.
    - **Fluid Character Classification**: Log fluid appearance (*Serosanguinous*, *Serous*, *Sanguinous*, *Purulent*, *Other*).
-   - **Accurate Local 24-Hour "ml today" Totals**: Updated in v2.1.0 with a local timezone calendar matcher (`isTodayLocal()`), ensuring entries logged in the evening stay in today's total instead of rolling over to tomorrow in UTC time.
+   - **Accurate Local 24-Hour "ml today" Totals**: Calculated using local timezone calendar matcher (`isTodayLocal()`).
 
-2. **🛡️ Pull-First Cloud Safety Guard (Phone Setup Protection)**:
+3. **🛡️ Pull-First Cloud Safety Guard (Phone Setup Protection)**:
    - **Zero-Overwrite Guarantee**: When connecting a new device (like a phone) for the first time, Recovery Tracker ALWAYS fetches data from Google Sheets first.
 
-3. **Multi-Device 2-Way Conflict-Free Sync**:
+4. **Multi-Device 2-Way Conflict-Free Sync**:
    - Merges dose logs and drain outputs across all your devices without overwriting.
    - Auto-syncs on tab focus & background polling every 30 seconds.
-
-4. **"As Needed" & "Scheduled" Medications**:
-   - **🛑 RED / Rose Card**: Active minimum interval cooldown with live countdown timer.
-   - **🟢 GREEN / Emerald Card**: Interval elapsed, ready to take.
 
 ---
 

@@ -1,5 +1,5 @@
 /**
- * RECOVERY TRACKER - Google Apps Script Backend (v2.1.0 - Medications & 4 Medical Drains Tracker)
+ * RECOVERY TRACKER - Google Apps Script Backend (v2.2.0 - Mobile UX & Multi-Device Tracker)
  * 
  * Instructions:
  * 1. Open your Google Sheet.
