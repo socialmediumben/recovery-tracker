@@ -24,7 +24,7 @@
         </div>
         <div class="brand-text">
           <h1>Recovery Tracker</h1>
-          <span class="brand-tagline">Medications &amp; Drain Manager <span class="badge-version" id="versionBadge">v2.2.0</span></span>
+          <span class="brand-tagline">Medications &amp; Drain Manager <span class="badge-version" id="versionBadge">v2.3.0</span></span>
         </div>
       </div>
 
@@ -269,7 +269,7 @@
         </div>
       </section>
 
-      <!-- TAB 3: DAILY SCHEDULE VIEW -->
+      <!-- TAB 3: DAILY SCHEDULE VIEW (v2.3.0 Window Boundaries) -->
       <section class="tab-content" id="tab-schedule">
         <div class="schedule-header">
           <div>
@@ -279,41 +279,53 @@
         </div>
 
         <div class="time-slots-container">
-          <!-- Morning Slot -->
-          <div class="time-slot-card" data-slot="Morning">
+          <!-- Morning Slot (7 AM - 12 PM) -->
+          <div class="time-slot-card" data-slot="Morning" id="cardSlotMorning">
             <div class="slot-header morning-header">
-              <i class="fa-solid fa-sun"></i>
-              <h3>Morning</h3>
+              <div>
+                <i class="fa-solid fa-sun"></i>
+                <h3>Morning</h3>
+                <span class="slot-time-range">7:00 AM – 12:00 PM</span>
+              </div>
               <span class="slot-badge" id="badgeMorning">0 / 0</span>
             </div>
             <div class="slot-body" id="slotListMorning"></div>
           </div>
 
-          <!-- Afternoon Slot -->
-          <div class="time-slot-card" data-slot="Afternoon">
+          <!-- Afternoon Slot (12 PM - 4 PM) -->
+          <div class="time-slot-card" data-slot="Afternoon" id="cardSlotAfternoon">
             <div class="slot-header afternoon-header">
-              <i class="fa-solid fa-cloud-sun"></i>
-              <h3>Afternoon</h3>
+              <div>
+                <i class="fa-solid fa-cloud-sun"></i>
+                <h3>Afternoon</h3>
+                <span class="slot-time-range">12:00 PM – 4:00 PM</span>
+              </div>
               <span class="slot-badge" id="badgeAfternoon">0 / 0</span>
             </div>
             <div class="slot-body" id="slotListAfternoon"></div>
           </div>
 
-          <!-- Evening Slot -->
-          <div class="time-slot-card" data-slot="Evening">
+          <!-- Evening Slot (4 PM - 8 PM) -->
+          <div class="time-slot-card" data-slot="Evening" id="cardSlotEvening">
             <div class="slot-header evening-header">
-              <i class="fa-solid fa-moon"></i>
-              <h3>Evening</h3>
+              <div>
+                <i class="fa-solid fa-moon"></i>
+                <h3>Evening</h3>
+                <span class="slot-time-range">4:00 PM – 8:00 PM</span>
+              </div>
               <span class="slot-badge" id="badgeEvening">0 / 0</span>
             </div>
             <div class="slot-body" id="slotListEvening"></div>
           </div>
 
-          <!-- Night Slot -->
-          <div class="time-slot-card" data-slot="Night">
+          <!-- Night Slot (8 PM - 2 AM) -->
+          <div class="time-slot-card" data-slot="Night" id="cardSlotNight">
             <div class="slot-header night-header">
-              <i class="fa-solid fa-bed"></i>
-              <h3>Night</h3>
+              <div>
+                <i class="fa-solid fa-bed"></i>
+                <h3>Night</h3>
+                <span class="slot-time-range">8:00 PM – 2:00 AM</span>
+              </div>
               <span class="slot-badge" id="badgeNight">0 / 0</span>
             </div>
             <div class="slot-body" id="slotListNight"></div>
@@ -452,7 +464,7 @@
               <li>Open your Google Sheet (create one at <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a> if needed).</li>
               <li>Click <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
               <li>Delete any existing code in the editor.</li>
-              <li>Copy and paste the full Apps Script v2.2.0 code below into the editor:</li>
+              <li>Copy and paste the full Apps Script v2.3.0 code below into the editor:</li>
             </ol>
 
             <div class="code-snippet-box">
@@ -497,14 +509,14 @@
       </div>
       <div class="modal-body">
         <div class="info-hero">
-          <div class="info-version-pill">Version 2.2.0</div>
+          <div class="info-version-pill">Version 2.3.0</div>
           <h3>Your Personal Medical &amp; Recovery Companion</h3>
-          <p>Recovery Tracker manages medication schedules, dose compliance, and 4 surgical drain outputs with a mobile-first design.</p>
+          <p>Recovery Tracker manages medication schedules, time window dose compliance, and 4 surgical drain outputs.</p>
         </div>
 
         <div class="info-tabs">
           <button class="info-tab-btn active" data-infotab="info-guide">How to Use</button>
-          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v2.2.0)</button>
+          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v2.3.0)</button>
           <button class="info-tab-btn" data-infotab="info-about">Technical Info</button>
         </div>
 
@@ -513,8 +525,8 @@
             <li>
               <div class="guide-num">1</div>
               <div>
-                <strong>Mobile Optimized Thumb Navigation</strong>
-                <p>Fixed bottom tab bar and floating action button (+ FAB) for instant 1-tap dose &amp; drain logging on iPhone &amp; Android.</p>
+                <strong>Scheduled Dose Time Windows (v2.3.0)</strong>
+                <p>Scheduled daily doses match exact window boundaries: <strong>Morning</strong> (7 AM – 12 PM), <strong>Afternoon</strong> (12 PM – 4 PM), <strong>Evening</strong> (4 PM – 8 PM), and <strong>Night</strong> (8 PM – 2 AM).</p>
               </div>
             </li>
             <li>
@@ -528,7 +540,7 @@
               <div class="guide-num">3</div>
               <div>
                 <strong>Medical Drain Output Tracking (4 Drains)</strong>
-                <p>Record output fluid volume (ml) and fluid character (Serosanguinous, Serous, Sanguinous, Purulent) for Drains 1, 2, 3, and 4.</p>
+                <p>Record output fluid volume (ml) and fluid character for Drains 1, 2, 3, and 4.</p>
               </div>
             </li>
           </ul>
@@ -537,19 +549,23 @@
         <div class="info-tab-content" id="info-changelog">
           <div class="changelog-timeline">
             <div class="changelog-item">
-              <span class="changelog-version">v2.2.0 (Current Release)</span>
+              <span class="changelog-version">v2.3.0 (Current Release)</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>📱 <strong>Mobile First Ergonomics</strong>: Bottom navigation tab bar for mobile devices.</li>
-                <li>⚡ <strong>Mobile Speed Dial FAB Button</strong>: Floating action button to quickly log doses or drain outputs with 1 tap.</li>
-                <li>📐 <strong>Mobile Bottom Sheets</strong>: Modals transform into bottom sheets with touch targets (min 44px) and 16px inputs to prevent mobile browser zoom.</li>
+                <li>🕒 <strong>Scheduled Dose Time Windows</strong>: Daily checklist items mark as taken based on exact time slot schedules:
+                  <br>• Morning: 7 AM – 12 PM
+                  <br>• Afternoon: 12 PM – 4 PM
+                  <br>• Evening: 4 PM – 8 PM
+                  <br>• Night: 8 PM – 2 AM
+                </li>
+                <li>✨ <strong>Active Time Slot Indicator</strong>: Highlights the current active time window card.</li>
               </ul>
             </div>
             <div class="changelog-item" style="margin-top: 1rem;">
-              <span class="changelog-version">v2.1.0</span>
+              <span class="changelog-version">v2.2.0</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>🐛 Fixed timezone calculation bug for "ml today" drain stats.</li>
+                <li>📱 Mobile-first bottom navigation tab bar &amp; speed dial FAB button.</li>
               </ul>
             </div>
           </div>

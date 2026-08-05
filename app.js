@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 2.2.0 - Mobile Optimized UX & Speed Dial FAB
+ * Version 2.3.0 - Scheduled Medication Time Slot Windows & Active Indicators
  */
 
 // Global Application State
@@ -10,7 +10,7 @@ const STATE = {
   drainLogs: [],
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v2.2.0',
+  version: 'v2.3.0',
   theme: 'light',
   lastSyncedTime: null,
   isInitialFetchDone: false,
@@ -197,7 +197,7 @@ function clearAllData() {
 }
 
 /* ==========================================================================
-   MULTI-DEVICE SMART SYNC ENGINE (v2.2.0)
+   MULTI-DEVICE SMART SYNC ENGINE (v2.3.0)
    ========================================================================== */
 
 function fetchFromGoogleSheets() {
@@ -561,14 +561,38 @@ function renderScheduledMeds() {
   }).join('');
 }
 
-// 4. DAILY SCHEDULE CHECKLIST
+// 4. DAILY SCHEDULE CHECKLIST (v2.3.0 Time Window Schedule)
 function renderDailySchedule() {
   const slots = ['Morning', 'Afternoon', 'Evening', 'Night'];
+  const currentHour = new Date().getHours();
+
+  // Determine Active Time Slot
+  let activeSlot = '';
+  if (currentHour >= 7 && currentHour < 12) activeSlot = 'Morning';
+  else if (currentHour >= 12 && currentHour < 16) activeSlot = 'Afternoon';
+  else if (currentHour >= 16 && currentHour < 20) activeSlot = 'Evening';
+  else if (currentHour >= 20 || currentHour < 2) activeSlot = 'Night';
 
   slots.forEach(slot => {
     const listEl = document.getElementById(`slotList${slot}`);
     const badgeEl = document.getElementById(`badge${slot}`);
+    const cardEl = document.getElementById(`cardSlot${slot}`);
     if (!listEl) return;
+
+    // Highlight Active Current Slot
+    if (cardEl) {
+      if (slot === activeSlot) {
+        cardEl.classList.add('active-slot-card');
+        const h3 = cardEl.querySelector('h3');
+        if (h3 && !h3.querySelector('.now-active-pill')) {
+          h3.innerHTML += `<span class="now-active-pill">NOW ACTIVE</span>`;
+        }
+      } else {
+        cardEl.classList.remove('active-slot-card');
+        const activePill = cardEl.querySelector('.now-active-pill');
+        if (activePill) activePill.remove();
+      }
+    }
 
     const slotMeds = STATE.medications.filter(m => m.type === 'scheduled' && (m.scheduledSlots || []).includes(slot));
     
@@ -581,21 +605,17 @@ function renderDailySchedule() {
     }
 
     listEl.innerHTML = slotMeds.map(med => {
-      const isTakenToday = STATE.logs.some(l => 
-        l.medicationId === med.id && 
-        isTodayLocal(l.timestamp) && 
-        (l.timeSlot === slot || !l.timeSlot)
-      );
+      const isTakenInWindow = isSlotLogTaken(med.id, slot);
 
-      if (isTakenToday) takenCount++;
+      if (isTakenInWindow) takenCount++;
 
       return `
-        <div class="schedule-item ${isTakenToday ? 'taken' : ''}">
+        <div class="schedule-item ${isTakenInWindow ? 'taken' : ''}">
           <div class="schedule-item-info">
             <strong>${escapeHtml(med.name)}</strong>
             <span>${med.quantity} ${escapeHtml(med.unit)}</span>
           </div>
-          ${isTakenToday ? `
+          ${isTakenInWindow ? `
             <span class="badge-ready"><i class="fa-solid fa-check"></i> Logged</span>
           ` : `
             <button class="btn btn-sm btn-primary touch-target" onclick="openLogDoseModal('${med.id}', '${slot}')">
@@ -614,6 +634,45 @@ function renderDailySchedule() {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     dateDisplay.textContent = new Date().toLocaleDateString(undefined, options);
   }
+}
+
+/**
+ * Checks if a dose has been logged for a medication within a specific time slot window.
+ * Boundaries:
+ * - Morning: 7:00 AM to 12:00 PM
+ * - Afternoon: 12:00 PM to 4:00 PM
+ * - Evening: 4:00 PM to 8:00 PM
+ * - Night: 8:00 PM to 2:00 AM (spans midnight)
+ */
+function isSlotLogTaken(medId, slotName) {
+  return STATE.logs.some(l => {
+    if (l.medicationId !== medId) return false;
+
+    // Explicit manual slot assignment
+    if (l.timeSlot === slotName && isTodayLocal(l.timestamp)) return true;
+
+    const logDate = new Date(l.timestamp);
+    if (isNaN(logDate.getTime())) return false;
+
+    const logHours = logDate.getHours();
+
+    if (slotName === 'Morning') {
+      return isTodayLocal(l.timestamp) && logHours >= 7 && logHours < 12;
+    } else if (slotName === 'Afternoon') {
+      return isTodayLocal(l.timestamp) && logHours >= 12 && logHours < 16;
+    } else if (slotName === 'Evening') {
+      return isTodayLocal(l.timestamp) && logHours >= 16 && logHours < 20;
+    } else if (slotName === 'Night') {
+      // 8:00 PM (20:00) to 2:00 AM (02:00 next day)
+      if (logHours >= 20 && isTodayLocal(l.timestamp)) return true;
+      if (logHours < 2) {
+        return isTodayLocal(l.timestamp);
+      }
+      return false;
+    }
+
+    return false;
+  });
 }
 
 // 5. MEDICAL DRAINS TRACKER VIEWS
@@ -816,7 +875,7 @@ function startLiveTimer() {
 }
 
 /* ==========================================================================
-   EVENT HANDLERS & MOBILE FAB MENU (v2.2.0)
+   EVENT HANDLERS & MOBILE FAB MENU
    ========================================================================== */
 
 function setupEventListeners() {
@@ -835,7 +894,7 @@ function setupEventListeners() {
     });
   });
 
-  // Mobile Speed Dial Floating Action Button (FAB)
+  // Mobile FAB
   const fabBtn = document.getElementById('btnMobileFab');
   const fabOptions = document.getElementById('fabOptions');
   
@@ -1309,7 +1368,7 @@ function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend (v2.2.0 - Mobile UX & Multi-Device Tracker)
+ * RECOVERY TRACKER - Google Apps Script Backend (v2.3.0 - Time Slot Windows & Multi-Device Tracker)
  * 
  * Instructions:
  * 1. Open your Google Sheet.

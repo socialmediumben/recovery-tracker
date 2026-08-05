@@ -1,5 +1,5 @@
 /**
- * RECOVERY TRACKER - Google Apps Script Backend (v2.2.0 - Mobile UX & Multi-Device Tracker)
+ * RECOVERY TRACKER - Google Apps Script Backend (v2.3.0 - Time Slot Windows & Multi-Device Tracker)
  * 
  * Instructions:
  * 1. Open your Google Sheet.

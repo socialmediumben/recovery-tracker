@@ -1,5 +1,5 @@
 /* ==========================================================================
-   RECOVERY TRACKER - CSS Design System (v2.2.0 - Mobile Optimized UX)
+   RECOVERY TRACKER - CSS Design System (v2.3.0 - Scheduled Time Slot Windows)
    ========================================================================== */
 
 :root {
@@ -165,7 +165,7 @@ body {
 .status-dot.offline { background-color: #94A3B8; }
 .status-dot.error { background-color: #EF4444; }
 
-/* Desktop Navigation Bar */
+/* Navigation */
 .app-nav {
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
@@ -221,9 +221,9 @@ body {
   display: block;
 }
 
-/* Mobile Floating Action Button (FAB) */
+/* Mobile FAB */
 .mobile-fab-container {
-  display: none; /* Shown on Mobile */
+  display: none;
 }
 
 /* Overview Cards */
@@ -274,20 +274,99 @@ body {
   font-weight: 600;
 }
 
-/* Section Header */
-.section-header {
-  margin-bottom: 1rem;
+/* Schedule Time Slots Container (v2.3.0) */
+.time-slots-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
 }
-.section-header h2 {
-  font-size: 1.15rem;
-  font-weight: 700;
+
+.time-slot-card {
+  background: var(--bg-surface);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.section-desc {
-  font-size: 0.8rem;
+
+/* Active Current Time Slot Glow */
+.time-slot-card.active-slot-card {
+  border-color: var(--primary);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);
+}
+
+.slot-header {
+  padding: 1rem 1.15rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-surface-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.slot-header div {
+  display: flex;
+  flex-direction: column;
+}
+
+.slot-header h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.slot-time-range {
+  font-size: 0.725rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.slot-badge {
+  background: var(--bg-surface);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 800;
+  border: 1px solid var(--border-color);
+}
+
+.now-active-pill {
+  background: #2563EB;
+  color: white;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-left: 0.4rem;
+}
+
+.slot-body {
+  padding: 0.85rem 1.15rem;
+}
+
+.schedule-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+.schedule-item:last-child { border-bottom: none; }
+
+.schedule-item-info {
+  display: flex;
+  flex-direction: column;
+}
+.schedule-item-info strong { font-size: 0.9rem; }
+.schedule-item-info span { font-size: 0.75rem; color: var(--text-muted); }
+
+.schedule-item.taken .schedule-item-info strong {
+  text-decoration: line-through;
   color: var(--text-muted);
 }
-.highlight-red { color: #F43F5E; font-weight: 700; }
-.highlight-green { color: #10B981; font-weight: 700; }
 
 /* Med Cards Grid */
 .meds-grid {
@@ -457,7 +536,7 @@ body {
   border: none;
   cursor: pointer;
   transition: transform 0.1s ease, background 0.2s ease;
-  min-height: 44px; /* Touch target guideline */
+  min-height: 44px;
   touch-action: manipulation;
 }
 
@@ -537,7 +616,7 @@ body {
   flex-shrink: 0;
 }
 
-/* Forms - 16px to prevent iOS Auto-Zoom */
+/* Forms - 16px prevents iOS Auto-Zoom */
 .form-group {
   margin-bottom: 0.85rem;
 }
@@ -554,7 +633,7 @@ body {
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-main);
-  font-size: 16px; /* Prevents mobile browser auto-zoom */
+  font-size: 16px;
 }
 
 .form-row {
@@ -642,7 +721,7 @@ body {
 /* Toast */
 .toast-container {
   position: fixed;
-  bottom: 5rem; /* Raised for mobile bottom bar */
+  bottom: 5rem;
   right: 1rem;
   left: 1rem;
   z-index: 2000;
@@ -684,7 +763,6 @@ body {
 
   .desktop-only { display: none !important; }
 
-  /* App Main Padding */
   .app-main {
     padding: 1rem 0.85rem;
   }
@@ -732,7 +810,7 @@ body {
     border-top-color: var(--primary);
   }
 
-  /* Mobile Speed Dial Floating Action Button (FAB) */
+  /* Mobile FAB */
   .mobile-fab-container {
     display: flex;
     flex-direction: column;
