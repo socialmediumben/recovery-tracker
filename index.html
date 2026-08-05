@@ -21,7 +21,7 @@
         </div>
         <div class="brand-text">
           <h1>Recovery Tracker</h1>
-          <span class="brand-tagline">Medications &amp; Medical Drain Manager <span class="badge-version" id="versionBadge">v2.0.0</span></span>
+          <span class="brand-tagline">Medications &amp; Medical Drain Manager <span class="badge-version" id="versionBadge">v2.1.0</span></span>
         </div>
       </div>
 
@@ -135,7 +135,7 @@
         </div>
       </section>
 
-      <!-- TAB 2: MEDICAL DRAINS TRACKER (v2.0.0) -->
+      <!-- TAB 2: MEDICAL DRAINS TRACKER -->
       <section class="tab-content" id="tab-drains">
         <div class="reports-header">
           <div>
@@ -434,7 +434,7 @@
               <li>Open your Google Sheet (create one at <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a> if needed).</li>
               <li>Click <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
               <li>Delete any existing code in the editor.</li>
-              <li>Copy and paste the full Apps Script v2.0.0 code below into the editor:</li>
+              <li>Copy and paste the full Apps Script v2.1.0 code below into the editor:</li>
             </ol>
 
             <div class="code-snippet-box">
@@ -479,14 +479,14 @@
       </div>
       <div class="modal-body">
         <div class="info-hero">
-          <div class="info-version-pill">Version 2.0.0</div>
+          <div class="info-version-pill">Version 2.1.0</div>
           <h3>Your Personal Medical &amp; Recovery Companion</h3>
           <p>Recovery Tracker manages medication schedules, dose compliance, and 4 surgical drain outputs.</p>
         </div>
 
         <div class="info-tabs">
           <button class="info-tab-btn active" data-infotab="info-guide">How to Use</button>
-          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v2.0.0)</button>
+          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v2.1.0)</button>
           <button class="info-tab-btn" data-infotab="info-about">Technical Info</button>
         </div>
 
@@ -519,19 +519,19 @@
         <div class="info-tab-content" id="info-changelog">
           <div class="changelog-timeline">
             <div class="changelog-item">
-              <span class="changelog-version">v2.0.0 (Current Release)</span>
+              <span class="changelog-version">v2.1.0 (Current Release)</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>🩸 Added <strong>Medical Drain Output Tracker</strong> for 4 surgical drains with 24-hr volume stats and fluid character logging.</li>
-                <li>🛡️ Implemented <strong>Pull-First Cloud Safety Guard</strong> to prevent fresh device setups from overwriting Google Sheets.</li>
-                <li>📊 Integrated Drain Output Logs into CSV exports and Printable Clinical Reports.</li>
+                <li>🐛 Fixed timezone calculation bug for <strong>"ml today"</strong> so drain outputs logged in local evening times count accurately towards today's total instead of rolling over to tomorrow in UTC.</li>
+                <li>📅 Added <code>isTodayLocal()</code> calendar day matcher for multi-device local date accuracy.</li>
               </ul>
             </div>
             <div class="changelog-item" style="margin-top: 1rem;">
-              <span class="changelog-version">v1.2.0</span>
+              <span class="changelog-version">v2.0.0</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>🔄 2-Way Conflict-Free Smart Merge Engine &amp; Auto-sync on tab focus.</li>
+                <li>🩸 Added Medical Drain Output Tracker for 4 surgical drains.</li>
+                <li>🛡️ Added Pull-First Cloud Safety Guard.</li>
               </ul>
             </div>
           </div>
@@ -596,7 +596,7 @@
     </div>
   </div>
 
-  <!-- MODAL 3: LOG DRAIN OUTPUT MODAL (v2.0.0) -->
+  <!-- MODAL 3: LOG DRAIN OUTPUT MODAL -->
   <div class="modal-overlay hidden" id="modalDrainOutput">
     <div class="modal-card">
       <div class="modal-header">

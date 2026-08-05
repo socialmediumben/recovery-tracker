@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 2.0.1 - Fixed Drain Sync Engine & Manual Sync Push
+ * Version 2.1.0 - Accurate Local Timezone Day Calculator & Drain Output Engine
  */
 
 // Global Application State
@@ -10,7 +10,7 @@ const STATE = {
   drainLogs: [],
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v2.0.1',
+  version: 'v2.1.0',
   theme: 'light',
   lastSyncedTime: null,
   isInitialFetchDone: false,
@@ -197,7 +197,7 @@ function clearAllData() {
 }
 
 /* ==========================================================================
-   MULTI-DEVICE SMART SYNC ENGINE (v2.0.1)
+   MULTI-DEVICE SMART SYNC ENGINE (v2.1.0)
    ========================================================================== */
 
 function fetchFromGoogleSheets() {
@@ -228,11 +228,6 @@ function fetchFromGoogleSheets() {
       const remoteMeds = json.data.medications || [];
       const remoteLogs = json.data.logs || [];
       const remoteDrainLogs = json.data.drainLogs || [];
-
-      // Check if remote backend missing drainLogs support
-      if (json.data.drainLogs === undefined && STATE.drainLogs.length > 0) {
-        console.warn('Google Sheets script needs v2.0.0 update in Code.gs');
-      }
 
       const { mergedMeds, mergedLogs, mergedDrainLogs, changesDetected } = smartMergeData(
         STATE.medications, STATE.logs, STATE.drainLogs,
@@ -430,10 +425,11 @@ function renderOverviewStats() {
     else readyCount++;
   });
 
-  const todayStr = new Date().toISOString().split('T')[0];
   const drainTotalToday = STATE.drainLogs
-    .filter(d => d.timestamp && d.timestamp.startsWith(todayStr))
+    .filter(d => isTodayLocal(d.timestamp))
     .reduce((sum, d) => sum + (Number(d.volumeMl) || 0), 0);
+
+  const dosesToday = STATE.logs.filter(l => isTodayLocal(l.timestamp)).length;
 
   document.getElementById('statReadyCount').textContent = readyCount;
   document.getElementById('statCooldownCount').textContent = cooldownCount;
@@ -570,7 +566,6 @@ function renderScheduledMeds() {
 // 4. DAILY SCHEDULE CHECKLIST
 function renderDailySchedule() {
   const slots = ['Morning', 'Afternoon', 'Evening', 'Night'];
-  const todayStr = new Date().toISOString().split('T')[0];
 
   slots.forEach(slot => {
     const listEl = document.getElementById(`slotList${slot}`);
@@ -590,7 +585,7 @@ function renderDailySchedule() {
     listEl.innerHTML = slotMeds.map(med => {
       const isTakenToday = STATE.logs.some(l => 
         l.medicationId === med.id && 
-        l.timestamp && l.timestamp.startsWith(todayStr) && 
+        isTodayLocal(l.timestamp) && 
         (l.timeSlot === slot || !l.timeSlot)
       );
 
@@ -623,18 +618,18 @@ function renderDailySchedule() {
   }
 }
 
-// 5. MEDICAL DRAINS TRACKER VIEWS
+// 5. MEDICAL DRAINS TRACKER VIEWS (v2.1.0 - Local Timezone Calendar Fix)
 function renderDrainViews() {
   const drainIds = ['drain_1', 'drain_2', 'drain_3', 'drain_4'];
-  const todayStr = new Date().toISOString().split('T')[0];
 
   drainIds.forEach((dId, idx) => {
     const num = idx + 1;
     const dLogs = STATE.drainLogs.filter(d => d.drainId === dId);
     dLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
+    // ACCURATE LOCAL TIMEZONE TODAY CALCULATION
     const todayTotal = dLogs
-      .filter(d => d.timestamp && d.timestamp.startsWith(todayStr))
+      .filter(d => isTodayLocal(d.timestamp))
       .reduce((sum, d) => sum + (Number(d.volumeMl) || 0), 0);
 
     const lastLog = dLogs[0];
@@ -707,8 +702,7 @@ function renderLogsTable() {
 
     const logTime = new Date(log.timestamp).getTime();
     if (dateFilter === 'today') {
-      const todayStr = new Date().toISOString().split('T')[0];
-      if (!log.timestamp || !log.timestamp.startsWith(todayStr)) return false;
+      if (!isTodayLocal(log.timestamp)) return false;
     } else if (dateFilter === '7days') {
       if (now - logTime > 7 * 24 * 3600 * 1000) return false;
     } else if (dateFilter === '30days') {
@@ -867,7 +861,6 @@ function setupEventListeners() {
 
   document.getElementById('btnManualSync')?.addEventListener('click', () => {
     if (STATE.appsScriptUrl) {
-      // Manual Sync: Push local state FIRST, then fetch and merge!
       syncToGoogleSheets(true);
       showToast('Pushing local data and syncing with Google Sheets...');
     } else {
@@ -1216,6 +1209,21 @@ function exportLogsToCSV() {
    UTILITY & FORMATTING FUNCTIONS
    ========================================================================== */
 
+/**
+ * Bulletproof Local Timezone Day Calculator
+ * Compares year, month, and day in the browser's local timezone.
+ */
+function isTodayLocal(isoOrDateString) {
+  if (!isoOrDateString) return false;
+  const d = new Date(isoOrDateString);
+  if (isNaN(d.getTime())) return false;
+
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() &&
+         d.getMonth() === now.getMonth() &&
+         d.getDate() === now.getDate();
+}
+
 function formatDuration(ms) {
   if (ms <= 0) return '00:00:00';
   const totalSeconds = Math.floor(ms / 1000);
@@ -1283,7 +1291,7 @@ function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend (v2.0.0 - Medications & 4 Medical Drains Tracker)
+ * RECOVERY TRACKER - Google Apps Script Backend (v2.1.0 - Medications & 4 Medical Drains Tracker)
  * 
  * Instructions:
  * 1. Open your Google Sheet.

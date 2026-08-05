@@ -1,5 +1,5 @@
 /**
- * RECOVERY TRACKER - Google Apps Script Backend (v2.0.0 - Medication & 4 Medical Drains Tracker)
+ * RECOVERY TRACKER - Google Apps Script Backend (v2.1.0 - Medications & 4 Medical Drains Tracker)
  * 
  * Instructions:
  * 1. Open your Google Sheet.
@@ -36,7 +36,7 @@ function setupSheets() {
     logSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#2B6CB0').setFontColor('#FFFFFF');
   }
 
-  // 3. Medical Drain Logs Sheet (v2.0.0)
+  // 3. Medical Drain Logs Sheet
   let drainSheet = ss.getSheetByName('DrainLogs');
   if (!drainSheet) {
     drainSheet = ss.insertSheet('DrainLogs');
@@ -177,7 +177,7 @@ function saveAllData(medications, logs, drainLogs) {
     ]);
   });
 
-  // Save Drain Logs (v2.0.0)
+  // Save Drain Logs
   const drainSheet = ss.getSheetByName('DrainLogs');
   drainSheet.clearContents();
   drainSheet.appendRow(['id', 'drainId', 'drainName', 'volumeMl', 'fluidCharacter', 'timestamp', 'notes']);
