@@ -4,9 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#0F172A">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Recovery Tracker - Smart Medication & Drain Manager</title>
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💊</text></svg>">
   <!-- Google Fonts & Font Awesome Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,7 +27,7 @@
         </div>
         <div class="brand-text">
           <h1>Recovery Tracker</h1>
-          <span class="brand-tagline">Medications &amp; Drain Manager <span class="badge-version" id="versionBadge">v2.3.0</span></span>
+          <span class="brand-tagline">Medications &amp; Drain Manager <span class="badge-version" id="versionBadge">v2.3.1</span></span>
         </div>
       </div>
 
@@ -269,7 +272,7 @@
         </div>
       </section>
 
-      <!-- TAB 3: DAILY SCHEDULE VIEW (v2.3.0 Window Boundaries) -->
+      <!-- TAB 3: DAILY SCHEDULE VIEW -->
       <section class="tab-content" id="tab-schedule">
         <div class="schedule-header">
           <div>
@@ -464,7 +467,7 @@
               <li>Open your Google Sheet (create one at <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a> if needed).</li>
               <li>Click <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
               <li>Delete any existing code in the editor.</li>
-              <li>Copy and paste the full Apps Script v2.3.0 code below into the editor:</li>
+              <li>Copy and paste the full Apps Script v2.3.1 code below into the editor:</li>
             </ol>
 
             <div class="code-snippet-box">
@@ -509,14 +512,14 @@
       </div>
       <div class="modal-body">
         <div class="info-hero">
-          <div class="info-version-pill">Version 2.3.0</div>
+          <div class="info-version-pill">Version 2.3.1</div>
           <h3>Your Personal Medical &amp; Recovery Companion</h3>
           <p>Recovery Tracker manages medication schedules, time window dose compliance, and 4 surgical drain outputs.</p>
         </div>
 
         <div class="info-tabs">
           <button class="info-tab-btn active" data-infotab="info-guide">How to Use</button>
-          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v2.3.0)</button>
+          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v2.3.1)</button>
           <button class="info-tab-btn" data-infotab="info-about">Technical Info</button>
         </div>
 
@@ -525,7 +528,7 @@
             <li>
               <div class="guide-num">1</div>
               <div>
-                <strong>Scheduled Dose Time Windows (v2.3.0)</strong>
+                <strong>Scheduled Dose Time Windows</strong>
                 <p>Scheduled daily doses match exact window boundaries: <strong>Morning</strong> (7 AM – 12 PM), <strong>Afternoon</strong> (12 PM – 4 PM), <strong>Evening</strong> (4 PM – 8 PM), and <strong>Night</strong> (8 PM – 2 AM).</p>
               </div>
             </li>
@@ -549,23 +552,19 @@
         <div class="info-tab-content" id="info-changelog">
           <div class="changelog-timeline">
             <div class="changelog-item">
-              <span class="changelog-version">v2.3.0 (Current Release)</span>
+              <span class="changelog-version">v2.3.1 (Current Release)</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>🕒 <strong>Scheduled Dose Time Windows</strong>: Daily checklist items mark as taken based on exact time slot schedules:
-                  <br>• Morning: 7 AM – 12 PM
-                  <br>• Afternoon: 12 PM – 4 PM
-                  <br>• Evening: 4 PM – 8 PM
-                  <br>• Night: 8 PM – 2 AM
-                </li>
-                <li>✨ <strong>Active Time Slot Indicator</strong>: Highlights the current active time window card.</li>
+                <li>⚡ <strong>Google Sheets Cold-Start Fix</strong>: Expanded JSONP fetch timeout to 25 seconds to accommodate Google Apps Script server warm-up.</li>
+                <li>🛡️ <strong>Safe Callback Cleanup</strong>: Replaced premature deletion with safe no-op callback wrapper to prevent <code>rt_jsonp_cb is not defined</code> reference errors.</li>
+                <li>🎨 Added SVG favicon to eliminate 404 console notices.</li>
               </ul>
             </div>
             <div class="changelog-item" style="margin-top: 1rem;">
-              <span class="changelog-version">v2.2.0</span>
+              <span class="changelog-version">v2.3.0</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>📱 Mobile-first bottom navigation tab bar &amp; speed dial FAB button.</li>
+                <li>🕒 Scheduled dose time windows (Morning 7-12, Afternoon 12-16, Evening 16-20, Night 20-2).</li>
               </ul>
             </div>
           </div>

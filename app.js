@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 2.3.0 - Scheduled Medication Time Slot Windows & Active Indicators
+ * Version 2.3.1 - Google Apps Script Cold-Start Resilience & Safe Callback Handlers
  */
 
 // Global Application State
@@ -10,7 +10,7 @@ const STATE = {
   drainLogs: [],
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v2.3.0',
+  version: 'v2.3.1',
   theme: 'light',
   lastSyncedTime: null,
   isInitialFetchDone: false,
@@ -197,7 +197,7 @@ function clearAllData() {
 }
 
 /* ==========================================================================
-   MULTI-DEVICE SMART SYNC ENGINE (v2.3.0)
+   MULTI-DEVICE SMART SYNC ENGINE (v2.3.1 - Safe Cold-Start JSONP)
    ========================================================================== */
 
 function fetchFromGoogleSheets() {
@@ -210,10 +210,19 @@ function fetchFromGoogleSheets() {
   const separator = STATE.appsScriptUrl.includes('?') ? '&' : '?';
   script.src = `${STATE.appsScriptUrl}${separator}action=get_all&callback=${callbackName}`;
 
+  // Expanded timeout to 25 seconds for Google Apps Script server cold-start
   const timeoutId = setTimeout(() => {
-    cleanup();
+    handleTimeout();
+  }, 25000);
+
+  function handleTimeout() {
+    // Replace callback with safe no-op so late responses don't throw Uncaught ReferenceError
+    window[callbackName] = () => {
+      delete window[callbackName];
+    };
+    if (script.parentNode) script.parentNode.removeChild(script);
     updateSyncStatusUI('error', 'Sheets Timeout');
-  }, 10000);
+  }
 
   function cleanup() {
     clearTimeout(timeoutId);
@@ -561,12 +570,11 @@ function renderScheduledMeds() {
   }).join('');
 }
 
-// 4. DAILY SCHEDULE CHECKLIST (v2.3.0 Time Window Schedule)
+// 4. DAILY SCHEDULE CHECKLIST
 function renderDailySchedule() {
   const slots = ['Morning', 'Afternoon', 'Evening', 'Night'];
   const currentHour = new Date().getHours();
 
-  // Determine Active Time Slot
   let activeSlot = '';
   if (currentHour >= 7 && currentHour < 12) activeSlot = 'Morning';
   else if (currentHour >= 12 && currentHour < 16) activeSlot = 'Afternoon';
@@ -579,7 +587,6 @@ function renderDailySchedule() {
     const cardEl = document.getElementById(`cardSlot${slot}`);
     if (!listEl) return;
 
-    // Highlight Active Current Slot
     if (cardEl) {
       if (slot === activeSlot) {
         cardEl.classList.add('active-slot-card');
@@ -636,19 +643,10 @@ function renderDailySchedule() {
   }
 }
 
-/**
- * Checks if a dose has been logged for a medication within a specific time slot window.
- * Boundaries:
- * - Morning: 7:00 AM to 12:00 PM
- * - Afternoon: 12:00 PM to 4:00 PM
- * - Evening: 4:00 PM to 8:00 PM
- * - Night: 8:00 PM to 2:00 AM (spans midnight)
- */
 function isSlotLogTaken(medId, slotName) {
   return STATE.logs.some(l => {
     if (l.medicationId !== medId) return false;
 
-    // Explicit manual slot assignment
     if (l.timeSlot === slotName && isTodayLocal(l.timestamp)) return true;
 
     const logDate = new Date(l.timestamp);
@@ -663,7 +661,6 @@ function isSlotLogTaken(medId, slotName) {
     } else if (slotName === 'Evening') {
       return isTodayLocal(l.timestamp) && logHours >= 16 && logHours < 20;
     } else if (slotName === 'Night') {
-      // 8:00 PM (20:00) to 2:00 AM (02:00 next day)
       if (logHours >= 20 && isTodayLocal(l.timestamp)) return true;
       if (logHours < 2) {
         return isTodayLocal(l.timestamp);
@@ -1368,7 +1365,7 @@ function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend (v2.3.0 - Time Slot Windows & Multi-Device Tracker)
+ * RECOVERY TRACKER - Google Apps Script Backend (v2.3.1 - Cold-Start Optimization & Multi-Device Tracker)
  * 
  * Instructions:
  * 1. Open your Google Sheet.
