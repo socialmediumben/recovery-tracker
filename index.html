@@ -27,11 +27,16 @@
         </div>
         <div class="brand-text">
           <h1>Recovery Tracker</h1>
-          <span class="brand-tagline">Medications &amp; Drain Manager <span class="badge-version" id="versionBadge">v2.3.1</span></span>
+          <span class="brand-tagline">Medications &amp; Drain Manager <span class="badge-version" id="versionBadge">v2.4.0</span></span>
         </div>
       </div>
 
       <div class="header-actions">
+        <!-- Notification Permission Pill -->
+        <button class="btn btn-secondary notification-toggle-btn" id="btnNotificationPermission" title="Enable Web Push Notifications">
+          <i class="fa-regular fa-bell" id="notificationIcon"></i> <span id="notificationLabel" class="desktop-only">Notifications</span>
+        </button>
+
         <!-- Theme Switcher -->
         <button class="btn btn-secondary theme-toggle-btn" id="btnThemeToggle" title="Toggle Light / Dark Mode">
           <i class="fa-solid fa-sun" id="themeIcon"></i> <span id="themeLabel">Light Mode</span>
@@ -134,7 +139,7 @@
           <div class="section-header">
             <div>
               <h2><i class="fa-solid fa-hand-holding-medical color-primary"></i> As-Needed Medications</h2>
-              <p class="section-desc">Regulated by a minimum time interval between doses. Card turns <span class="highlight-red">RED</span> when in interval cooldown and <span class="highlight-green">GREEN</span> when ready.</p>
+              <p class="section-desc">Regulated by a minimum time interval between doses. Click <span class="highlight-blue">🔔 Remind Me</span> during cooldown to receive a browser push notification when ready!</p>
             </div>
           </div>
           <div class="meds-grid" id="asNeededGrid">
@@ -467,7 +472,7 @@
               <li>Open your Google Sheet (create one at <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a> if needed).</li>
               <li>Click <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
               <li>Delete any existing code in the editor.</li>
-              <li>Copy and paste the full Apps Script v2.3.1 code below into the editor:</li>
+              <li>Copy and paste the full Apps Script v2.4.0 code below into the editor:</li>
             </ol>
 
             <div class="code-snippet-box">
@@ -512,14 +517,14 @@
       </div>
       <div class="modal-body">
         <div class="info-hero">
-          <div class="info-version-pill">Version 2.3.1</div>
+          <div class="info-version-pill">Version 2.4.0</div>
           <h3>Your Personal Medical &amp; Recovery Companion</h3>
-          <p>Recovery Tracker manages medication schedules, time window dose compliance, and 4 surgical drain outputs.</p>
+          <p>Recovery Tracker manages medication schedules, interval compliance, Web Push Notifications, and 4 surgical drain outputs.</p>
         </div>
 
         <div class="info-tabs">
           <button class="info-tab-btn active" data-infotab="info-guide">How to Use</button>
-          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v2.3.1)</button>
+          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v2.4.0)</button>
           <button class="info-tab-btn" data-infotab="info-about">Technical Info</button>
         </div>
 
@@ -528,15 +533,15 @@
             <li>
               <div class="guide-num">1</div>
               <div>
-                <strong>Scheduled Dose Time Windows</strong>
-                <p>Scheduled daily doses match exact window boundaries: <strong>Morning</strong> (7 AM – 12 PM), <strong>Afternoon</strong> (12 PM – 4 PM), <strong>Evening</strong> (4 PM – 8 PM), and <strong>Night</strong> (8 PM – 2 AM).</p>
+                <strong>Web Push Notifications &amp; Reminders (v2.4.0)</strong>
+                <p>Click <span class="badge-blue">🔔 Remind Me</span> on any As-Needed medication during its cooldown. When the countdown hits 0, you'll receive a native browser push notification!</p>
               </div>
             </li>
             <li>
               <div class="guide-num">2</div>
               <div>
-                <strong>Tracking "As-Needed" Medications</strong>
-                <p>Card turns <span class="badge-red">RED</span> during minimum interval cooldown with a live countdown, and <span class="badge-green">GREEN</span> when ready.</p>
+                <strong>Scheduled Dose Time Windows</strong>
+                <p>Scheduled daily doses match exact window boundaries: <strong>Morning</strong> (7 AM – 12 PM), <strong>Afternoon</strong> (12 PM – 4 PM), <strong>Evening</strong> (4 PM – 8 PM), and <strong>Night</strong> (8 PM – 2 AM).</p>
               </div>
             </li>
             <li>
@@ -552,19 +557,19 @@
         <div class="info-tab-content" id="info-changelog">
           <div class="changelog-timeline">
             <div class="changelog-item">
-              <span class="changelog-version">v2.3.1 (Current Release)</span>
+              <span class="changelog-version">v2.4.0 (Current Release)</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>⚡ <strong>Google Sheets Cold-Start Fix</strong>: Expanded JSONP fetch timeout to 25 seconds to accommodate Google Apps Script server warm-up.</li>
-                <li>🛡️ <strong>Safe Callback Cleanup</strong>: Replaced premature deletion with safe no-op callback wrapper to prevent <code>rt_jsonp_cb is not defined</code> reference errors.</li>
-                <li>🎨 Added SVG favicon to eliminate 404 console notices.</li>
+                <li>🔔 <strong>Web Push Notifications</strong>: Browser notifications for dose availability.</li>
+                <li>⏱️ <strong>"Remind Me" Cooldown Timers</strong>: Added a 1-tap "Remind Me" button on As-Needed medication cards during interval cooldowns.</li>
+                <li>🔊 <strong>Audio Chime &amp; System Alert</strong>: Triggers a system push alert and gentle audio chime when your next dose is ready!</li>
               </ul>
             </div>
             <div class="changelog-item" style="margin-top: 1rem;">
-              <span class="changelog-version">v2.3.0</span>
+              <span class="changelog-version">v2.3.1</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>🕒 Scheduled dose time windows (Morning 7-12, Afternoon 12-16, Evening 16-20, Night 20-2).</li>
+                <li>⚡ Expanded Google Sheets JSONP timeout to 25s for cold start spin-ups.</li>
               </ul>
             </div>
           </div>

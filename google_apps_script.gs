@@ -1,5 +1,5 @@
 /**
- * RECOVERY TRACKER - Google Apps Script Backend (v2.3.1 - Cold-Start Optimization & Multi-Device Tracker)
+ * RECOVERY TRACKER - Google Apps Script Backend (v2.4.0 - Notifications & Multi-Device Tracker)
  * 
  * Instructions:
  * 1. Open your Google Sheet.

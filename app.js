@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 2.3.1 - Google Apps Script Cold-Start Resilience & Safe Callback Handlers
+ * Version 2.4.0 - Web Push Notifications & "Remind Me" Cooldown Timers
  */
 
 // Global Application State
@@ -8,9 +8,10 @@ const STATE = {
   medications: [],
   logs: [],
   drainLogs: [],
+  reminders: {}, // medId -> expiryTimestampMs
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v2.3.1',
+  version: 'v2.4.0',
   theme: 'light',
   lastSyncedTime: null,
   isInitialFetchDone: false,
@@ -89,11 +90,169 @@ document.addEventListener('DOMContentLoaded', () => {
 function initApp() {
   initTheme();
   loadLocalState();
+  initNotificationSystem();
   setupEventListeners();
   setupAppsScriptCodeDisplay();
   startLiveTimer();
   startAutoSync();
   renderAllViews();
+}
+
+/* ==========================================================================
+   WEB PUSH NOTIFICATIONS & REMIND ME ENGINE (v2.4.0)
+   ========================================================================== */
+
+function initNotificationSystem() {
+  const savedReminders = localStorage.getItem('rt_reminders');
+  if (savedReminders) {
+    try {
+      STATE.reminders = JSON.parse(savedReminders);
+    } catch (e) {
+      STATE.reminders = {};
+    }
+  }
+  updateNotificationUI();
+}
+
+function updateNotificationUI() {
+  const btn = document.getElementById('btnNotificationPermission');
+  const icon = document.getElementById('notificationIcon');
+  const label = document.getElementById('notificationLabel');
+
+  if (!btn || !('Notification' in window)) return;
+
+  if (Notification.permission === 'granted') {
+    if (icon) icon.className = 'fa-solid fa-bell color-primary';
+    if (label) label.textContent = 'Notifications On';
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-outline');
+  } else if (Notification.permission === 'denied') {
+    if (icon) icon.className = 'fa-solid fa-bell-slash color-rose';
+    if (label) label.textContent = 'Notifications Blocked';
+  } else {
+    if (icon) icon.className = 'fa-regular fa-bell';
+    if (label) label.textContent = 'Enable Notifications';
+  }
+}
+
+function requestNotificationPermission(callback) {
+  if (!('Notification' in window)) {
+    showToast('Web Push Notifications are not supported on this browser.', 'error');
+    return;
+  }
+
+  if (Notification.permission === 'granted') {
+    if (callback) callback(true);
+  } else if (Notification.permission !== 'denied') {
+    Notification.requestPermission().then(permission => {
+      updateNotificationUI();
+      if (permission === 'granted') {
+        showToast('Web Push Notifications enabled! We will notify you when doses are ready.', 'success');
+        if (callback) callback(true);
+      } else {
+        showToast('Notification permission was denied in your browser settings.', 'info');
+        if (callback) callback(false);
+      }
+    });
+  } else {
+    showToast('Notifications are blocked by your browser settings. Please enable them in your address bar settings.', 'info');
+    if (callback) callback(false);
+  }
+}
+
+function toggleMedicationReminder(medId) {
+  const med = STATE.medications.find(m => m.id === medId);
+  if (!med) return;
+
+  // If reminder is already set, cancel it
+  if (STATE.reminders[medId]) {
+    delete STATE.reminders[medId];
+    localStorage.setItem('rt_reminders', JSON.stringify(STATE.reminders));
+    renderAsNeededMeds();
+    showToast(`Cancelled reminder for ${med.name}`, 'info');
+    return;
+  }
+
+  // Request permission & schedule reminder
+  requestNotificationPermission((granted) => {
+    const lastLog = getLastLogForMed(med.id);
+    if (!lastLog) return;
+
+    const lastTimeMs = new Date(lastLog.timestamp).getTime();
+    const minIntervalMs = (med.minIntervalHours || 4) * 3600 * 1000;
+    const expiryTimeMs = lastTimeMs + minIntervalMs;
+
+    STATE.reminders[medId] = expiryTimeMs;
+    localStorage.setItem('rt_reminders', JSON.stringify(STATE.reminders));
+    renderAsNeededMeds();
+
+    const remainMs = expiryTimeMs - Date.now();
+    showToast(`🔔 Reminder set for ${med.name}! We will notify you in ${formatDuration(remainMs)}.`, 'success');
+  });
+}
+
+function checkAndTriggerNotifications() {
+  const now = Date.now();
+  let changed = false;
+
+  Object.keys(STATE.reminders).forEach(medId => {
+    const expiryMs = STATE.reminders[medId];
+    if (now >= expiryMs) {
+      const med = STATE.medications.find(m => m.id === medId);
+      if (med) {
+        // Fire Browser Push Notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification('💊 Recovery Tracker - Dose Ready!', {
+              body: `Your cooldown interval for ${med.name} (${med.quantity} ${med.unit}) has elapsed. You are now eligible for your next dose.`,
+              icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💊</text></svg>',
+              tag: `dose_ready_${medId}`
+            });
+          } catch (e) {
+            console.warn('Could not launch system notification:', e);
+          }
+        }
+
+        // Play gentle Web Audio chime/beep
+        playNotificationChime();
+        showToast(`🔔 Reminder: ${med.name} is now ready to take!`, 'success');
+      }
+
+      delete STATE.reminders[medId];
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    localStorage.setItem('rt_reminders', JSON.stringify(STATE.reminders));
+    renderAsNeededMeds();
+    renderOverviewStats();
+  }
+}
+
+function playNotificationChime() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
+
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.6);
+  } catch (e) {
+    // Ignore audio errors if blocked by browser policy
+  }
 }
 
 /* ==========================================================================
@@ -191,13 +350,15 @@ function clearAllData() {
     STATE.medications = [];
     STATE.logs = [];
     STATE.drainLogs = [];
+    STATE.reminders = {};
+    localStorage.removeItem('rt_reminders');
     saveState(true);
     showToast('All local data cleared.', 'info');
   }
 }
 
 /* ==========================================================================
-   MULTI-DEVICE SMART SYNC ENGINE (v2.3.1 - Safe Cold-Start JSONP)
+   MULTI-DEVICE SMART SYNC ENGINE (v2.4.0)
    ========================================================================== */
 
 function fetchFromGoogleSheets() {
@@ -210,13 +371,11 @@ function fetchFromGoogleSheets() {
   const separator = STATE.appsScriptUrl.includes('?') ? '&' : '?';
   script.src = `${STATE.appsScriptUrl}${separator}action=get_all&callback=${callbackName}`;
 
-  // Expanded timeout to 25 seconds for Google Apps Script server cold-start
   const timeoutId = setTimeout(() => {
     handleTimeout();
   }, 25000);
 
   function handleTimeout() {
-    // Replace callback with safe no-op so late responses don't throw Uncaught ReferenceError
     window[callbackName] = () => {
       delete window[callbackName];
     };
@@ -444,7 +603,7 @@ function renderOverviewStats() {
   document.getElementById('statDrainTotalToday').textContent = `${drainTotalToday} ml`;
 }
 
-// 2. AS-NEEDED MEDICATIONS GRID
+// 2. AS-NEEDED MEDICATIONS GRID (v2.4.0 Remind Me Button)
 function renderAsNeededMeds() {
   const container = document.getElementById('asNeededGrid');
   if (!container) return;
@@ -469,6 +628,7 @@ function renderAsNeededMeds() {
     const cardClass = status.isCooldown ? 'card-cooldown' : 'card-ready';
     const badgeText = status.isCooldown ? 'Cooldown Period' : 'Ready to Take';
     const badgeClass = status.isCooldown ? 'badge-cooldown' : 'badge-ready';
+    const hasReminder = Boolean(STATE.reminders[med.id]);
 
     return `
       <div class="med-card ${cardClass}" data-id="${med.id}">
@@ -499,6 +659,13 @@ function renderAsNeededMeds() {
           <button class="btn btn-primary touch-target" onclick="openLogDoseModal('${med.id}')">
             <i class="fa-solid fa-plus-circle"></i> Log Dose
           </button>
+          
+          ${status.isCooldown ? `
+            <button class="btn ${hasReminder ? 'btn-reminder-active' : 'btn-reminder'} touch-target" onclick="toggleMedicationReminder('${med.id}')" title="Get a push notification when cooldown finishes">
+              <i class="fa-solid ${hasReminder ? 'fa-bell' : 'fa-bell-concierge'}"></i> ${hasReminder ? 'Reminder Set' : 'Remind Me'}
+            </button>
+          ` : ''}
+
           <button class="btn btn-secondary btn-icon-only touch-target" onclick="openEditMedicationModal('${med.id}')" title="Edit Medication">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
@@ -868,6 +1035,9 @@ function startLiveTimer() {
         }
       }
     });
+
+    // Check & trigger active reminders
+    checkAndTriggerNotifications();
   }, 1000);
 }
 
@@ -877,6 +1047,9 @@ function startLiveTimer() {
 
 function setupEventListeners() {
   document.getElementById('btnThemeToggle')?.addEventListener('click', () => toggleTheme());
+  document.getElementById('btnNotificationPermission')?.addEventListener('click', () => {
+    requestNotificationPermission();
+  });
 
   // Navigation Tabs
   document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -1165,6 +1338,8 @@ function deleteMedication(id) {
 
   if (confirm(`Are you sure you want to delete ${med.name}?`)) {
     STATE.medications = STATE.medications.filter(m => m.id !== id);
+    if (STATE.reminders[id]) delete STATE.reminders[id];
+    localStorage.setItem('rt_reminders', JSON.stringify(STATE.reminders));
     saveState(true);
     showToast(`Deleted ${med.name}`, 'info');
   }
@@ -1222,6 +1397,13 @@ function handleSaveLogDose(e) {
   };
 
   STATE.logs.push(newLog);
+
+  // Clear previous reminder if existing
+  if (STATE.reminders[med.id]) {
+    delete STATE.reminders[med.id];
+    localStorage.setItem('rt_reminders', JSON.stringify(STATE.reminders));
+  }
+
   saveState(true);
   closeLogDoseModal();
   showToast(`Logged dose for ${med.name}!`);
@@ -1365,7 +1547,7 @@ function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend (v2.3.1 - Cold-Start Optimization & Multi-Device Tracker)
+ * RECOVERY TRACKER - Google Apps Script Backend (v2.4.0 - Notifications & Multi-Device Tracker)
  * 
  * Instructions:
  * 1. Open your Google Sheet.

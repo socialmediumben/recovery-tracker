@@ -1,5 +1,5 @@
 /* ==========================================================================
-   RECOVERY TRACKER - CSS Design System (v2.3.0 - Scheduled Time Slot Windows)
+   RECOVERY TRACKER - CSS Design System (v2.4.0 - Web Push Notifications)
    ========================================================================== */
 
 :root {
@@ -134,6 +134,15 @@ body {
   border-radius: var(--radius-pill);
   font-weight: 700;
   font-size: 0.65rem;
+}
+
+.badge-blue {
+  background: #DBEAFE;
+  color: #1E40AF;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.7rem;
 }
 
 .header-actions {
@@ -274,7 +283,7 @@ body {
   font-weight: 600;
 }
 
-/* Schedule Time Slots Container (v2.3.0) */
+/* Schedule Time Slots Container */
 .time-slots-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -290,7 +299,6 @@ body {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Active Current Time Slot Glow */
 .time-slot-card.active-slot-card {
   border-color: var(--primary);
   box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);
@@ -464,11 +472,31 @@ body {
 .card-bottom {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .card-bottom .btn-primary {
   flex: 1;
 }
+
+/* Remind Me Button Styling (v2.4.0) */
+.btn-reminder {
+  background: #E0F2FE;
+  color: #0369A1;
+  border: 1px solid #7DD3FC;
+  font-weight: 700;
+}
+.btn-reminder:hover {
+  background: #BAE6FD;
+}
+.btn-reminder-active {
+  background: #0284C7;
+  color: white;
+  border-color: #0369A1;
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.4);
+}
+
+.highlight-blue { color: #0284C7; font-weight: 700; }
 
 /* Drain Summary Cards Grid */
 .drains-summary-grid {
