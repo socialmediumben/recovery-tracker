@@ -15,7 +15,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css?v=2.4.0">
+  <!-- Chart.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="style.css?v=2.5.0">
 </head>
 <body>
   <!-- Main Header -->
@@ -27,7 +29,7 @@
         </div>
         <div class="brand-text">
           <h1>Recovery Tracker</h1>
-          <span class="brand-tagline">Medications &amp; Drain Manager <span class="badge-version" id="versionBadge">v2.4.0</span></span>
+          <span class="brand-tagline">Medications &amp; Drain Manager <span class="badge-version" id="versionBadge">v2.5.0</span></span>
         </div>
       </div>
 
@@ -161,12 +163,12 @@
         </div>
       </section>
 
-      <!-- TAB 2: MEDICAL DRAINS TRACKER -->
+      <!-- TAB 2: MEDICAL DRAINS TRACKER (v2.5.0 Interactive Trends Line Chart) -->
       <section class="tab-content" id="tab-drains">
         <div class="reports-header">
           <div>
             <h2><i class="fa-solid fa-vial-circle-check color-rose"></i> Medical Drain Output Tracker</h2>
-            <p class="section-desc">Track output volume (ml/cc), fluid character, and emptying frequency across all 4 surgical drains.</p>
+            <p class="section-desc">Track output volume (ml/cc), fluid character, and emptying trends across all 4 surgical drains.</p>
           </div>
           <div class="report-actions">
             <button class="btn btn-danger" onclick="openLogDrainModal()">
@@ -250,8 +252,36 @@
           </div>
         </div>
 
+        <!-- NEW v2.5.0: Drain Output Line Chart Card -->
+        <div class="settings-card" style="margin-top: 1.75rem;">
+          <div class="chart-card-header">
+            <div>
+              <h3><i class="fa-solid fa-chart-line color-rose"></i> Drain Volume Trends Over Time</h3>
+              <p class="section-desc">Visualize total output per drain with dual analytics modes.</p>
+            </div>
+
+            <!-- Mode Switcher Toggle Buttons -->
+            <div class="chart-toggle-group">
+              <button class="btn-chart-toggle active" id="btnChartModeCumulative" title="Shows total cumulative fluid filled over time (only goes up or plateaus)">
+                <i class="fa-solid fa-chart-area"></i> Cumulative Output
+              </button>
+              <button class="btn-chart-toggle" id="btnChartModeDaily" title="Shows exact total volume recorded specifically on each calendar day">
+                <i class="fa-solid fa-chart-column"></i> Grouped by Day
+              </button>
+            </div>
+          </div>
+
+          <div class="chart-container-box">
+            <canvas id="drainChart"></canvas>
+            <div class="empty-state hidden" id="emptyChartState">
+              <i class="fa-solid fa-chart-line"></i>
+              <p>Log your first drain entry to view interactive line charts!</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Recent Drain Output Timeline Table -->
-        <div class="settings-card" style="margin-top: 2rem;">
+        <div class="settings-card" style="margin-top: 1.75rem;">
           <h3><i class="fa-solid fa-list"></i> Drain Output History</h3>
           <div class="table-responsive" style="margin-top: 1rem;">
             <table class="report-table">
@@ -472,7 +502,7 @@
               <li>Open your Google Sheet (create one at <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a> if needed).</li>
               <li>Click <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
               <li>Delete any existing code in the editor.</li>
-              <li>Copy and paste the full Apps Script v2.4.0 code below into the editor:</li>
+              <li>Copy and paste the full Apps Script v2.5.0 code below into the editor:</li>
             </ol>
 
             <div class="code-snippet-box">
@@ -517,14 +547,14 @@
       </div>
       <div class="modal-body">
         <div class="info-hero">
-          <div class="info-version-pill">Version 2.4.0</div>
+          <div class="info-version-pill">Version 2.5.0</div>
           <h3>Your Personal Medical &amp; Recovery Companion</h3>
-          <p>Recovery Tracker manages medication schedules, interval compliance, Web Push Notifications, and 4 surgical drain outputs.</p>
+          <p>Recovery Tracker manages medication schedules, interval compliance, Web Push Notifications, and 4 surgical drain outputs with interactive line charts.</p>
         </div>
 
         <div class="info-tabs">
           <button class="info-tab-btn active" data-infotab="info-guide">How to Use</button>
-          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v2.4.0)</button>
+          <button class="info-tab-btn" data-infotab="info-changelog">Changelog (v2.5.0)</button>
           <button class="info-tab-btn" data-infotab="info-about">Technical Info</button>
         </div>
 
@@ -533,22 +563,22 @@
             <li>
               <div class="guide-num">1</div>
               <div>
-                <strong>Web Push Notifications &amp; Reminders (v2.4.0)</strong>
-                <p>Click <span class="badge-blue">🔔 Remind Me</span> on any As-Needed medication during its cooldown. When the countdown hits 0, you'll receive a native browser push notification!</p>
+                <strong>Drain Output Analytics &amp; Line Chart (v2.5.0)</strong>
+                <p>Toggle between <strong>Cumulative Output</strong> (total volume accumulated over time, only increases or plateaus) and <strong>Grouped by Day</strong> (exact sum recorded per calendar day).</p>
               </div>
             </li>
             <li>
               <div class="guide-num">2</div>
               <div>
-                <strong>Scheduled Dose Time Windows</strong>
-                <p>Scheduled daily doses match exact window boundaries: <strong>Morning</strong> (7 AM – 12 PM), <strong>Afternoon</strong> (12 PM – 4 PM), <strong>Evening</strong> (4 PM – 8 PM), and <strong>Night</strong> (8 PM – 2 AM).</p>
+                <strong>Web Push Notifications &amp; Reminders</strong>
+                <p>Click <span class="badge-blue">🔔 Remind Me</span> on any As-Needed medication during its cooldown to receive a browser push notification when ready!</p>
               </div>
             </li>
             <li>
               <div class="guide-num">3</div>
               <div>
-                <strong>Medical Drain Output Tracking (4 Drains)</strong>
-                <p>Record output fluid volume (ml) and fluid character for Drains 1, 2, 3, and 4.</p>
+                <strong>Scheduled Dose Time Windows</strong>
+                <p>Scheduled daily doses match exact window boundaries: <strong>Morning</strong> (7 AM – 12 PM), <strong>Afternoon</strong> (12 PM – 4 PM), <strong>Evening</strong> (4 PM – 8 PM), and <strong>Night</strong> (8 PM – 2 AM).</p>
               </div>
             </li>
           </ul>
@@ -557,19 +587,21 @@
         <div class="info-tab-content" id="info-changelog">
           <div class="changelog-timeline">
             <div class="changelog-item">
-              <span class="changelog-version">v2.4.0 (Current Release)</span>
+              <span class="changelog-version">v2.5.0 (Current Release)</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>🔔 <strong>Web Push Notifications</strong>: Browser notifications for dose availability.</li>
-                <li>⏱️ <strong>"Remind Me" Cooldown Timers</strong>: Added a 1-tap "Remind Me" button on As-Needed medication cards during interval cooldowns.</li>
-                <li>🔊 <strong>Audio Chime &amp; System Alert</strong>: Triggers a system push alert and gentle audio chime when your next dose is ready!</li>
+                <li>📈 <strong>Interactive Drain Trends Line Chart</strong>: Added Chart.js line graph displaying output volume over time for all 4 surgical drains.</li>
+                <li>🔄 <strong>Dual Analytics Modes</strong>:
+                  <br>• <em>Cumulative Output Mode</em>: Tracks total accumulated fluid filled over time (non-decreasing line).
+                  <br>• <em>Grouped by Day Mode</em>: Shows total volume recorded per calendar day per drain.
+                </li>
               </ul>
             </div>
             <div class="changelog-item" style="margin-top: 1rem;">
-              <span class="changelog-version">v2.3.1</span>
+              <span class="changelog-version">v2.4.0</span>
               <span class="changelog-date">August 2026</span>
               <ul>
-                <li>⚡ Expanded Google Sheets JSONP timeout to 25s for cold start spin-ups.</li>
+                <li>🔔 Web Push Notifications &amp; 1-tap "Remind Me" dose cooldown timers.</li>
               </ul>
             </div>
           </div>
@@ -771,6 +803,6 @@
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <script src="app.js?v=2.4.0"></script>
+  <script src="app.js?v=2.5.0"></script>
 </body>
 </html>

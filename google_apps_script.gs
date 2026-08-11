@@ -1,5 +1,5 @@
 /**
- * RECOVERY TRACKER - Google Apps Script Backend (v2.4.0 - Notifications & Multi-Device Tracker)
+ * RECOVERY TRACKER - Google Apps Script Backend (v2.5.0 - Drain Analytics & Multi-Device Tracker)
  * 
  * Instructions:
  * 1. Open your Google Sheet.

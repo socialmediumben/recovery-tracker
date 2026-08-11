@@ -1,6 +1,6 @@
 /**
  * RECOVERY TRACKER - Core Application Logic
- * Version 2.4.0 - Web Push Notifications & "Remind Me" Cooldown Timers
+ * Version 2.5.0 - Interactive Drain Trends Line Chart (Cumulative & Daily Modes)
  */
 
 // Global Application State
@@ -11,12 +11,14 @@ const STATE = {
   reminders: {}, // medId -> expiryTimestampMs
   appsScriptUrl: '',
   syncMode: 'local', // 'local' | 'sheets'
-  version: 'v2.4.0',
+  version: 'v2.5.0',
   theme: 'light',
   lastSyncedTime: null,
   isInitialFetchDone: false,
   timerInterval: null,
-  autoSyncInterval: null
+  autoSyncInterval: null,
+  drainChartMode: 'cumulative', // 'cumulative' | 'daily'
+  drainChartInstance: null
 };
 
 // Optional Sample Data
@@ -74,10 +76,46 @@ const SAMPLE_DATA = {
       id: 'drain_sample_1',
       drainId: 'drain_1',
       drainName: 'Drain 1',
-      volumeMl: 35,
+      volumeMl: 20,
       fluidCharacter: 'Serosanguinous (pink/red)',
-      timestamp: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
-      notes: 'Emptied bulb, suction intact.'
+      timestamp: new Date(Date.now() - 2 * 86400 * 1000).toISOString(),
+      notes: 'Day 1 morning'
+    },
+    {
+      id: 'drain_sample_2',
+      drainId: 'drain_1',
+      drainName: 'Drain 1',
+      volumeMl: 5,
+      fluidCharacter: 'Serosanguinous (pink/red)',
+      timestamp: new Date(Date.now() - 1 * 86400 * 1000).toISOString(),
+      notes: 'Day 2'
+    },
+    {
+      id: 'drain_sample_3',
+      drainId: 'drain_1',
+      drainName: 'Drain 1',
+      volumeMl: 10,
+      fluidCharacter: 'Serosanguinous (pink/red)',
+      timestamp: new Date().toISOString(),
+      notes: 'Day 3'
+    },
+    {
+      id: 'drain_sample_4',
+      drainId: 'drain_2',
+      drainName: 'Drain 2',
+      volumeMl: 15,
+      fluidCharacter: 'Serous (straw/clear)',
+      timestamp: new Date(Date.now() - 2 * 86400 * 1000).toISOString(),
+      notes: 'Day 1'
+    },
+    {
+      id: 'drain_sample_5',
+      drainId: 'drain_2',
+      drainName: 'Drain 2',
+      volumeMl: 10,
+      fluidCharacter: 'Serous (straw/clear)',
+      timestamp: new Date(Date.now() - 1 * 86400 * 1000).toISOString(),
+      notes: 'Day 2'
     }
   ]
 };
@@ -99,7 +137,7 @@ function initApp() {
 }
 
 /* ==========================================================================
-   WEB PUSH NOTIFICATIONS & REMIND ME ENGINE (v2.4.0)
+   WEB PUSH NOTIFICATIONS & REMIND ME ENGINE
    ========================================================================== */
 
 function initNotificationSystem() {
@@ -164,7 +202,6 @@ function toggleMedicationReminder(medId) {
   const med = STATE.medications.find(m => m.id === medId);
   if (!med) return;
 
-  // If reminder is already set, cancel it
   if (STATE.reminders[medId]) {
     delete STATE.reminders[medId];
     localStorage.setItem('rt_reminders', JSON.stringify(STATE.reminders));
@@ -173,7 +210,6 @@ function toggleMedicationReminder(medId) {
     return;
   }
 
-  // Request permission & schedule reminder
   requestNotificationPermission((granted) => {
     const lastLog = getLastLogForMed(med.id);
     if (!lastLog) return;
@@ -200,7 +236,6 @@ function checkAndTriggerNotifications() {
     if (now >= expiryMs) {
       const med = STATE.medications.find(m => m.id === medId);
       if (med) {
-        // Fire Browser Push Notification
         if ('Notification' in window && Notification.permission === 'granted') {
           try {
             new Notification('💊 Recovery Tracker - Dose Ready!', {
@@ -213,7 +248,6 @@ function checkAndTriggerNotifications() {
           }
         }
 
-        // Play gentle Web Audio chime/beep
         playNotificationChime();
         showToast(`🔔 Reminder: ${med.name} is now ready to take!`, 'success');
       }
@@ -239,8 +273,8 @@ function playNotificationChime() {
     const gain = ctx.createGain();
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
 
     gain.gain.setValueAtTime(0.3, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
@@ -279,6 +313,11 @@ function applyTheme(theme) {
       themeIcon.className = 'fa-solid fa-sun';
       themeLabel.textContent = 'Light';
     }
+  }
+
+  // Re-render chart to reflect light/dark grid colors
+  if (STATE.drainChartInstance) {
+    renderDrainChart();
   }
 }
 
@@ -358,7 +397,7 @@ function clearAllData() {
 }
 
 /* ==========================================================================
-   MULTI-DEVICE SMART SYNC ENGINE (v2.4.0)
+   MULTI-DEVICE SMART SYNC ENGINE (v2.5.0)
    ========================================================================== */
 
 function fetchFromGoogleSheets() {
@@ -603,7 +642,7 @@ function renderOverviewStats() {
   document.getElementById('statDrainTotalToday').textContent = `${drainTotalToday} ml`;
 }
 
-// 2. AS-NEEDED MEDICATIONS GRID (v2.4.0 Remind Me Button)
+// 2. AS-NEEDED MEDICATIONS GRID
 function renderAsNeededMeds() {
   const container = document.getElementById('asNeededGrid');
   if (!container) return;
@@ -839,7 +878,7 @@ function isSlotLogTaken(medId, slotName) {
   });
 }
 
-// 5. MEDICAL DRAINS TRACKER VIEWS
+// 5. MEDICAL DRAINS TRACKER VIEWS & CHART.JS LINE GRAPH (v2.5.0)
 function renderDrainViews() {
   const drainIds = ['drain_1', 'drain_2', 'drain_3', 'drain_4'];
 
@@ -876,28 +915,209 @@ function renderDrainViews() {
     tbody.innerHTML = '';
     if (printTbody) printTbody.innerHTML = '<tr><td colspan="5">No drain entries.</td></tr>';
     if (emptyState) emptyState.classList.remove('hidden');
+  } else {
+    if (emptyState) emptyState.classList.add('hidden');
+
+    const rowsHtml = sortedDrains.map(d => `
+      <tr>
+        <td><strong>${formatFullDate(d.timestamp)}</strong></td>
+        <td><span class="badge-version">${escapeHtml(d.drainName || d.drainId)}</span></td>
+        <td><strong>${d.volumeMl} ml</strong></td>
+        <td>${escapeHtml(d.fluidCharacter)}</td>
+        <td>${d.notes ? escapeHtml(d.notes) : '<em>No notes</em>'}</td>
+        <td class="no-print">
+          <button class="btn btn-sm btn-outline touch-target" onclick="deleteDrainLog('${d.id}')" title="Delete entry">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+    tbody.innerHTML = rowsHtml;
+    if (printTbody) printTbody.innerHTML = rowsHtml;
+  }
+
+  // Render Interactive Drain Trends Chart
+  renderDrainChart();
+}
+
+/**
+ * Renders the Chart.js Line Chart with Dual Modes:
+ * 1. Cumulative Mode: Total accumulated fluid filled over time (non-decreasing line)
+ * 2. Grouped by Day Mode: Exact volume recorded on each specific calendar day
+ */
+function renderDrainChart() {
+  const canvas = document.getElementById('drainChart');
+  const emptyState = document.getElementById('emptyChartState');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  if (STATE.drainLogs.length === 0) {
+    canvas.style.display = 'none';
+    if (emptyState) emptyState.classList.remove('hidden');
+    if (STATE.drainChartInstance) {
+      STATE.drainChartInstance.destroy();
+      STATE.drainChartInstance = null;
+    }
     return;
   }
 
+  canvas.style.display = 'block';
   if (emptyState) emptyState.classList.add('hidden');
 
-  const rowsHtml = sortedDrains.map(d => `
-    <tr>
-      <td><strong>${formatFullDate(d.timestamp)}</strong></td>
-      <td><span class="badge-version">${escapeHtml(d.drainName || d.drainId)}</span></td>
-      <td><strong>${d.volumeMl} ml</strong></td>
-      <td>${escapeHtml(d.fluidCharacter)}</td>
-      <td>${d.notes ? escapeHtml(d.notes) : '<em>No notes</em>'}</td>
-      <td class="no-print">
-        <button class="btn btn-sm btn-outline touch-target" onclick="deleteDrainLog('${d.id}')" title="Delete entry">
-          <i class="fa-solid fa-trash"></i>
-        </button>
-      </td>
-    </tr>
-  `).join('');
+  // Extract unique calendar dates sorted chronologically
+  const dateMap = new Map(); // "YYYY-MM-DD" -> Date object
+  STATE.drainLogs.forEach(d => {
+    if (!d.timestamp) return;
+    const dt = new Date(d.timestamp);
+    if (isNaN(dt.getTime())) return;
+    const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    if (!dateMap.has(key)) {
+      dateMap.set(key, dt);
+    }
+  });
 
-  tbody.innerHTML = rowsHtml;
-  if (printTbody) printTbody.innerHTML = rowsHtml;
+  const sortedDateKeys = Array.from(dateMap.keys()).sort();
+
+  // Labels for X Axis (e.g. "Aug 4", "Aug 5")
+  const labels = sortedDateKeys.map(key => {
+    const dt = dateMap.get(key);
+    return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  });
+
+  // Calculate daily volume totals per drain for each date
+  const drainIds = ['drain_1', 'drain_2', 'drain_3', 'drain_4'];
+  const drainConfig = {
+    'drain_1': { label: 'Drain 1', color: '#E11D48', bg: 'rgba(225, 29, 72, 0.1)' },
+    'drain_2': { label: 'Drain 2', color: '#D97706', bg: 'rgba(217, 119, 6, 0.1)' },
+    'drain_3': { label: 'Drain 3', color: '#2563EB', bg: 'rgba(37, 99, 235, 0.1)' },
+    'drain_4': { label: 'Drain 4', color: '#7C3AED', bg: 'rgba(124, 58, 237, 0.1)' }
+  };
+
+  const dailyTotalsByDrain = {};
+  drainIds.forEach(dId => {
+    dailyTotalsByDrain[dId] = sortedDateKeys.map(dateKey => {
+      return STATE.drainLogs
+        .filter(d => {
+          if (d.drainId !== dId || !d.timestamp) return false;
+          const dt = new Date(d.timestamp);
+          const k = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+          return k === dateKey;
+        })
+        .reduce((sum, d) => sum + (Number(d.volumeMl) || 0), 0);
+    });
+  });
+
+  // Generate Data Points based on selected Chart Mode
+  const datasets = drainIds.map(dId => {
+    const rawDaily = dailyTotalsByDrain[dId];
+    let dataPoints = [];
+
+    if (STATE.drainChartMode === 'cumulative') {
+      // Cumulative Mode: Accumulate running total volume across dates (never decreases)
+      let runningSum = 0;
+      dataPoints = rawDaily.map(val => {
+        runningSum += val;
+        return runningSum;
+      });
+    } else {
+      // Grouped by Day Mode: Exact volume recorded on each day
+      dataPoints = [...rawDaily];
+    }
+
+    const cfg = drainConfig[dId];
+    return {
+      label: cfg.label,
+      data: dataPoints,
+      borderColor: cfg.color,
+      backgroundColor: cfg.bg,
+      borderWidth: 3,
+      pointRadius: 4,
+      pointHoverRadius: 7,
+      tension: 0.3,
+      fill: true
+    };
+  });
+
+  // Dark/Light Mode Colors
+  const isDark = STATE.theme === 'dark';
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)';
+  const textColor = isDark ? '#94A3B8' : '#64748B';
+
+  if (STATE.drainChartInstance) {
+    STATE.drainChartInstance.destroy();
+  }
+
+  const ctx = canvas.getContext('2d');
+  STATE.drainChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            color: textColor,
+            font: { family: 'Plus Jakarta Sans', weight: '700', size: 12 },
+            usePointStyle: true,
+            boxWidth: 10
+          }
+        },
+        tooltip: {
+          backgroundColor: '#0F172A',
+          titleColor: '#F8FAFC',
+          bodyColor: '#F8FAFC',
+          borderColor: gridColor,
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: function(context) {
+              return ` ${context.dataset.label}: ${context.raw} ml`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: gridColor },
+          ticks: { color: textColor, font: { family: 'Plus Jakarta Sans', weight: '600' } }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: gridColor },
+          ticks: {
+            color: textColor,
+            font: { family: 'Plus Jakarta Sans', weight: '600' },
+            callback: function(value) { return value + ' ml'; }
+          }
+        }
+      }
+    }
+  });
+}
+
+function setDrainChartMode(mode) {
+  STATE.drainChartMode = mode;
+  const btnCum = document.getElementById('btnChartModeCumulative');
+  const btnDaily = document.getElementById('btnChartModeDaily');
+
+  if (mode === 'cumulative') {
+    btnCum?.classList.add('active');
+    btnDaily?.classList.remove('active');
+  } else {
+    btnCum?.classList.remove('active');
+    btnDaily?.classList.add('active');
+  }
+
+  renderDrainChart();
 }
 
 // 6. HISTORY LOGS TABLE & FILTERS
@@ -1036,7 +1256,6 @@ function startLiveTimer() {
       }
     });
 
-    // Check & trigger active reminders
     checkAndTriggerNotifications();
   }, 1000);
 }
@@ -1051,6 +1270,10 @@ function setupEventListeners() {
     requestNotificationPermission();
   });
 
+  // Chart Mode Toggles
+  document.getElementById('btnChartModeCumulative')?.addEventListener('click', () => setDrainChartMode('cumulative'));
+  document.getElementById('btnChartModeDaily')?.addEventListener('click', () => setDrainChartMode('daily'));
+
   // Navigation Tabs
   document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
@@ -1061,6 +1284,10 @@ function setupEventListeners() {
       const targetId = e.currentTarget.dataset.tab;
       document.getElementById(targetId).classList.add('active');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      if (targetId === 'tab-drains') {
+        setTimeout(() => renderDrainChart(), 100);
+      }
     });
   });
 
@@ -1398,7 +1625,6 @@ function handleSaveLogDose(e) {
 
   STATE.logs.push(newLog);
 
-  // Clear previous reminder if existing
   if (STATE.reminders[med.id]) {
     delete STATE.reminders[med.id];
     localStorage.setItem('rt_reminders', JSON.stringify(STATE.reminders));
@@ -1547,7 +1773,7 @@ function setupAppsScriptCodeDisplay() {
   const el = document.getElementById('scriptCodeDisplay');
   if (!el) return;
   el.textContent = `/**
- * RECOVERY TRACKER - Google Apps Script Backend (v2.4.0 - Notifications & Multi-Device Tracker)
+ * RECOVERY TRACKER - Google Apps Script Backend (v2.5.0 - Drain Analytics & Multi-Device Tracker)
  * 
  * Instructions:
  * 1. Open your Google Sheet.
